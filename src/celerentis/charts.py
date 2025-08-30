@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import os
 from collections.abc import Iterable
 from pathlib import Path
 
-import matplotlib
-matplotlib.use("Agg")
+# Headless backend before importing pyplot
+os.environ["MPLBACKEND"] = "Agg"
+
 import matplotlib.pyplot as plt
 
 
