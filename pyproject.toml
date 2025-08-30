@@ -63,6 +63,8 @@ warn_unused_ignores = true
 warn_redundant_casts = true
 warn_unreachable = true
 mypy_path = "src"
+files = ["src", "tests"]
+
 
 [tool.pytest.ini_options]
 addopts = "-q --cov=celerentis --cov-report=term-missing"
