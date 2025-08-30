@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 from celerentis.config import AppConfig, load_config
 
 
-def test_load_config_ok(tmp_path: Path):
+def test_load_config_ok(tmp_path: Path) -> None:
     p = tmp_path / "cfg.yaml"
     p.write_text(
         """
@@ -17,7 +19,6 @@ output_path: out.pptx
         """,
         encoding="utf-8",
     )
-    # create dummy files
     (tmp_path / "logo.png").write_bytes(b"\x89PNG\r\n\x1a\n")
     (tmp_path / "template.pptx").write_bytes(b"fake")
     cfg = load_config(p)
