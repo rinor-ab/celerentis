@@ -1,15 +1,22 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, Tuple
 
 import matplotlib
-matplotlib.use("Agg")  # headless
-import matplotlib.pyplot as plt  # noqa: E402
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
-def render_bar(financials: Iterable[Tuple[int, float]], out_path: Path,
-               title: str, xlabel: str, ylabel: str) -> Path:
-    years, vals = zip(*[(int(y), float(v)) for y, v in financials])
+
+def render_bar(
+    financials: Iterable[tuple[int, float]],
+    out_path: Path,
+    title: str,
+    xlabel: str,
+    ylabel: str,
+) -> Path:
+    pairs = [(int(y), float(v)) for y, v in financials]
+    years, vals = zip(*pairs, strict=True)
     plt.figure()
     plt.bar(years, vals)
     plt.title(title)
@@ -21,4 +28,3 @@ def render_bar(financials: Iterable[Tuple[int, float]], out_path: Path,
     plt.savefig(out_path)
     plt.close()
     return out_path
-
