@@ -2,17 +2,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import typer
 from pptx import Presentation
 from rich.console import Console
 from rich.table import Table
-from typer import Typer
 
 from .config import load_config
 from .generator import generate
 from .templating import DEFAULT_TOKENS
 from .utils import iter_all_shapes
 
-app = Typer(help="Celerentis – template-driven deck generation")
+app = typer.Typer(help="Celerentis – template-driven deck generation")
 console = Console()
 
 
