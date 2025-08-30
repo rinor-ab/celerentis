@@ -12,7 +12,12 @@ from celerentis.generator import generate
 
 
 def test_end_to_end(tmp_path: Path) -> None:
+    # Generate example template & logo in repo/examples
     runpy.run_path("examples/make_minimal_template.py", run_name="__main__")
+
+    examples_dir = Path("examples").resolve()
+    template_abs = (examples_dir / "template.pptx").as_posix()
+    logo_abs = (examples_dir / "logo.png").as_posix()
 
     cfg_path = tmp_path / "cfg.yaml"
     cfg_path.write_text(
@@ -20,9 +25,9 @@ def test_end_to_end(tmp_path: Path) -> None:
 company_name: "Acme Test"
 tagline: "Fast decks"
 about_bullets: ["A","B"]
-logo_path: "examples/logo.png"
+logo_path: "{logo_abs}"
 financials: [[2019, 1],[2020, 2]]
-template_path: "examples/template.pptx"
+template_path: "{template_abs}"
 output_path: "{(tmp_path / "Out.pptx").as_posix()}"
 chart:
   title: "Rev"
@@ -32,6 +37,7 @@ chart:
 """,
         encoding="utf-8",
     )
+
     cfg = load_config(cfg_path)
     out = generate(cfg)
     assert out.exists()
