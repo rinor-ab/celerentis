@@ -14,7 +14,7 @@ def test_replace_tokens_basic(tmp_path: Path) -> None:
     tb = s.shapes.add_textbox(Inches(1), Inches(1), Inches(5), Inches(1))
     tb.text_frame.text = "{{COMPANY_NAME}} / {{TAGLINE}}"
     path = tmp_path / "t.pptx"
-    prs.save(path)
+    prs.save(str(path))  # <- pass str for mypy compatibility
 
     prs2 = Presentation(str(path))
     replace_tokens(prs2, {"company_name": "ACME", "tagline": "Fast", "about_bullets": []})
