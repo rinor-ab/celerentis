@@ -1,13 +1,15 @@
-from pathlib import Path
 import runpy
+from pathlib import Path
+
 import matplotlib
+
 matplotlib.use("Agg")
 
 from celerentis.config import load_config
 from celerentis.generator import generate
 
+
 def test_end_to_end(tmp_path: Path):
-    # Generate example template & logo at repo-relative path
     runpy.run_path("examples/make_minimal_template.py", run_name="__main__")
 
     cfg_path = tmp_path / "cfg.yaml"
@@ -28,7 +30,6 @@ chart:
 """,
         encoding="utf-8",
     )
-
     cfg = load_config(cfg_path)
     out = generate(cfg)
     assert out.exists()
