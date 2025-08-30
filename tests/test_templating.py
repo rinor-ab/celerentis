@@ -1,5 +1,6 @@
 from pptx import Presentation
 from pptx.util import Inches
+
 from celerentis.templating import replace_tokens
 
 def test_replace_tokens_basic(tmp_path):
