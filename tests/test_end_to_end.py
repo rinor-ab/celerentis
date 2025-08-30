@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import runpy
 from pathlib import Path
 
@@ -9,7 +11,7 @@ from celerentis.config import load_config
 from celerentis.generator import generate
 
 
-def test_end_to_end(tmp_path: Path):
+def test_end_to_end(tmp_path: Path) -> None:
     runpy.run_path("examples/make_minimal_template.py", run_name="__main__")
 
     cfg_path = tmp_path / "cfg.yaml"
