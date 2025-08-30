@@ -30,6 +30,17 @@ dev = [
 [project.scripts]
 celerentis = "celerentis.cli:main"
 
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["celerentis*"]
+
 [tool.black]
 line-length = 100
 target-version = ["py311"]
@@ -37,7 +48,7 @@ target-version = ["py311"]
 [tool.ruff]
 line-length = 100
 select = ["E","F","I","UP","B","SIM"]
-ignore = ["E501"]  # black manages line length
+ignore = ["E501"]
 src = ["src"]
 
 [tool.ruff.isort]
@@ -54,4 +65,3 @@ mypy_path = "src"
 [tool.pytest.ini_options]
 addopts = "-q --cov=celerentis --cov-report=term-missing"
 testpaths = ["tests"]
-
