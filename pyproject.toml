@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "AI-assisted, template-driven deck generator for M&A/PE/VC."
 readme = "README.md"
 requires-python = ">=3.11"
-authors = [{ name = "Rinor Abazi" }]
+authors = [{ name = "Your Name" }]
 dependencies = [
   "python-pptx>=0.6.23",
   "pydantic>=2.7",
@@ -47,11 +47,13 @@ target-version = ["py311"]
 
 [tool.ruff]
 line-length = 100
+src = ["src", "tests", "examples"]
+
+[tool.ruff.lint]
 select = ["E","F","I","UP","B","SIM"]
 ignore = ["E501"]
-src = ["src"]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["celerentis"]
 
 [tool.mypy]
