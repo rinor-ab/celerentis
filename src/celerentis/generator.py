@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from pptx import Presentation
 from pptx.util import Inches
@@ -8,7 +9,6 @@ from pptx.util import Inches
 from .charts import render_bar
 from .config import AppConfig
 from .templating import replace_tokens
-from .utils import iter_all_shapes
 
 EMU_PER_INCH = 914400
 
@@ -17,33 +17,39 @@ def _to_inches(emu: int) -> float:
     return emu / EMU_PER_INCH
 
 
-def _remove_shape(shape) -> None:
+def _remove_shape(shape: Any) -> None:
     elm = shape._element
     elm.getparent().remove(elm)
 
 
-def _find_chart_placeholder(
-    prs: Presentation, token: str
-) -> tuple[int, object] | tuple[None, None]:
+def _find_chart_placeholder(prs: Any, token: str) -> tuple[int, Any] | tuple[None, None]:
     for si, slide in enumerate(prs.slides):
-        for shape in iter_all_shapes(slide.shapes):
-            if getattr(shape, "has_text_frame", False) and token in shape.text_frame.text:
-                return si, shape
+        # flatten groups
+        for shape in slide.shapes:
+            stack = [shape]
+            while stack:
+                sh = stack.pop()
+                if getattr(sh, "shape_type", None) == 6 and hasattr(sh, "shapes"):
+                    stack.extend(list(sh.shapes))
+                    continue
+                if getattr(sh, "has_text_frame", False) and token in (sh.text_frame.text or ""):
+                    return si, sh
     return None, None
 
 
-def _add_logo_to_title(prs: Presentation, logo_path: Path) -> None:
+def _add_logo_to_title(prs: Any, logo_path: Path) -> None:
     if not Path(logo_path).is_file():
         return
     slide = prs.slides[0]
     width = Inches(1.5)
-    left = Inches((_to_inches(prs.slide_width)) - 1.8)
+    slide_w = int(getattr(prs, "slide_width", 0) or 0)
+    left = Inches(_to_inches(slide_w) - 1.8)
     top = Inches(0.3)
     slide.shapes.add_picture(str(logo_path), left, top, width=width)
 
 
 def generate(config: AppConfig) -> Path:
-    prs = Presentation(str(config.template_path))
+    prs: Any = Presentation(str(config.template_path))
 
     replace_tokens(
         prs,
@@ -65,10 +71,19 @@ def generate(config: AppConfig) -> Path:
             xlabel=config.chart.xlabel,
             ylabel=config.chart.ylabel,
         )
-        left = Inches(_to_inches(getattr(ph, "left", 0)))
-        top = Inches(_to_inches(getattr(ph, "top", 0)))
-        width = Inches(_to_inches(getattr(ph, "width", int(prs.slide_width * 0.6))))
-        height = Inches(_to_inches(getattr(ph, "height", int(prs.slide_height * 0.5))))
+
+        slide_w = int(getattr(prs, "slide_width", 0) or 0)
+        slide_h = int(getattr(prs, "slide_height", 0) or 0)
+        left_emus = int(getattr(ph, "left", 0) or 0)
+        top_emus = int(getattr(ph, "top", 0) or 0)
+        width_emus = int(getattr(ph, "width", int(slide_w * 0.6)) or int(slide_w * 0.6))
+        height_emus = int(getattr(ph, "height", int(slide_h * 0.5)) or int(slide_h * 0.5))
+
+        left = Inches(_to_inches(left_emus))
+        top = Inches(_to_inches(top_emus))
+        width = Inches(_to_inches(width_emus))
+        height = Inches(_to_inches(height_emus))
+
         _remove_shape(ph)
         prs.slides[si].shapes.add_picture(str(chart_path), left, top, width=width, height=height)
 
