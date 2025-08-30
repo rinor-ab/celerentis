@@ -1,9 +1,11 @@
+import os
+
+# Ensure headless backend BEFORE importing pyplot
+os.environ["MPLBACKEND"] = "Agg"
+
+import matplotlib.pyplot as plt
 from pptx import Presentation
 from pptx.util import Inches
-
-import matplotlib
-matplotlib.use("Agg")  # headless backend before importing pyplot
-import matplotlib.pyplot as plt
 
 
 prs = Presentation()
