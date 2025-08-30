@@ -1,5 +1,6 @@
 from pathlib import Path
-from celerentis.config import load_config, AppConfig
+
+from celerentis.config import AppConfig, load_config
 
 def test_load_config_ok(tmp_path: Path):
     p = tmp_path / "cfg.yaml"
