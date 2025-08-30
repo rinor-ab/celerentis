@@ -1,31 +1,36 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Tuple
 
 from pptx import Presentation
 from pptx.util import Inches
 
+from .charts import render_bar
 from .config import AppConfig
 from .templating import replace_tokens
-from .charts import render_bar
 from .utils import iter_all_shapes
 
 EMU_PER_INCH = 914400
 
+
 def _to_inches(emu: int) -> float:
     return emu / EMU_PER_INCH
+
 
 def _remove_shape(shape) -> None:
     elm = shape._element
     elm.getparent().remove(elm)
 
-def _find_chart_placeholder(prs: Presentation, token: str) -> Tuple[int, object] | tuple[None, None]:
+
+def _find_chart_placeholder(
+    prs: Presentation, token: str
+) -> tuple[int, object] | tuple[None, None]:
     for si, slide in enumerate(prs.slides):
         for shape in iter_all_shapes(slide.shapes):
             if getattr(shape, "has_text_frame", False) and token in shape.text_frame.text:
                 return si, shape
     return None, None
+
 
 def _add_logo_to_title(prs: Presentation, logo_path: Path) -> None:
     if not Path(logo_path).is_file():
@@ -36,20 +41,21 @@ def _add_logo_to_title(prs: Presentation, logo_path: Path) -> None:
     top = Inches(0.3)
     slide.shapes.add_picture(str(logo_path), left, top, width=width)
 
+
 def generate(config: AppConfig) -> Path:
     prs = Presentation(str(config.template_path))
 
-    # Replace text tokens
-    replace_tokens(prs, {
-        "company_name": config.company_name,
-        "tagline": config.tagline,
-        "about_bullets": config.about_bullets,
-    })
+    replace_tokens(
+        prs,
+        {
+            "company_name": config.company_name,
+            "tagline": config.tagline,
+            "about_bullets": config.about_bullets,
+        },
+    )
 
-    # Logo
     _add_logo_to_title(prs, config.logo_path)
 
-    # Chart
     si, ph = _find_chart_placeholder(prs, config.chart.placeholder_token)
     if si is not None and ph is not None:
         chart_path = render_bar(
@@ -66,8 +72,6 @@ def generate(config: AppConfig) -> Path:
         _remove_shape(ph)
         prs.slides[si].shapes.add_picture(str(chart_path), left, top, width=width, height=height)
 
-    # Save
     config.output_path.parent.mkdir(parents=True, exist_ok=True)
     prs.save(str(config.output_path))
     return config.output_path
-
