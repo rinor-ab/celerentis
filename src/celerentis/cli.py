@@ -5,14 +5,14 @@ from pathlib import Path
 from pptx import Presentation
 from rich.console import Console
 from rich.table import Table
-import typer
+from typer import Typer
 
 from .config import load_config
 from .generator import generate
 from .templating import DEFAULT_TOKENS
 from .utils import iter_all_shapes
 
-app = typer.Typer(help="Celerentis – template-driven deck generation")
+app = Typer(help="Celerentis – template-driven deck generation")
 console = Console()
 
 
