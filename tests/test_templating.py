@@ -3,6 +3,7 @@ from pptx.util import Inches
 
 from celerentis.templating import replace_tokens
 
+
 def test_replace_tokens_basic(tmp_path):
     prs = Presentation()
     s = prs.slides.add_slide(prs.slide_layouts[5])
@@ -12,6 +13,6 @@ def test_replace_tokens_basic(tmp_path):
 
     prs = Presentation(str(tmp_path / "t.pptx"))
     replace_tokens(prs, {"company_name": "ACME", "tagline": "Fast", "about_bullets": []})
-    assert "ACME" in prs.slides[0].shapes[1].text_frame.text
-    assert "Fast" in prs.slides[0].shapes[1].text_frame.text
-
+    text = prs.slides[0].shapes[1].text_frame.text
+    assert "ACME" in text
+    assert "Fast" in text
