@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import typer
 from pptx import Presentation
@@ -31,7 +32,8 @@ def inspect(template: Path) -> None:
     for slide in prs.slides:
         for sh in iter_all_shapes(slide.shapes):
             if getattr(sh, "has_text_frame", False):
-                txt = sh.text_frame.text or ""
+                tf: Any = getattr(sh, "text_frame", None)
+                txt: str = (tf.text or "") if tf is not None else ""
                 for token in DEFAULT_TOKENS:
                     if token in txt:
                         found.add(token)
