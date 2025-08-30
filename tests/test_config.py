@@ -2,6 +2,7 @@ from pathlib import Path
 
 from celerentis.config import AppConfig, load_config
 
+
 def test_load_config_ok(tmp_path: Path):
     p = tmp_path / "cfg.yaml"
     p.write_text(
@@ -18,9 +19,8 @@ output_path: out.pptx
     )
     # create dummy files
     (tmp_path / "logo.png").write_bytes(b"\x89PNG\r\n\x1a\n")
-    (tmp_path / "template.pptx").write_bytes(b"fake")  # not validated here
+    (tmp_path / "template.pptx").write_bytes(b"fake")
     cfg = load_config(p)
     assert isinstance(cfg, AppConfig)
     assert cfg.company_name == "ACME"
     assert cfg.logo_path.exists()
-
