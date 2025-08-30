@@ -1,9 +1,15 @@
 from pptx import Presentation
-from pptx.util import Inches, Pt
+from pptx.util import Inches
+
+import matplotlib
+matplotlib.use("Agg")  # headless backend before importing pyplot
+import matplotlib.pyplot as plt
+
 
 prs = Presentation()
+
 # Title slide
-slide = prs.slides.add_slide(prs.slide_layouts[5])  # blank-ish
+slide = prs.slides.add_slide(prs.slide_layouts[5])
 t1 = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(8), Inches(1))
 t1.text_frame.text = "{{COMPANY_NAME}}"
 t2 = slide.shapes.add_textbox(Inches(1), Inches(2), Inches(8), Inches(1))
@@ -24,8 +30,11 @@ ph.text_frame.text = "{{CHART_PLACEHOLDER}}"
 prs.save("examples/template.pptx")
 
 # simple square logo
-import matplotlib.pyplot as plt
-plt.figure(figsize=(1,1)); plt.text(0.5,0.5,"LOGO",ha="center",va="center")
-plt.axis("off"); plt.tight_layout(); plt.savefig("examples/logo.png"); plt.close()
-print("Wrote examples/template.pptx and examples/logo.png")
+plt.figure(figsize=(1, 1))
+plt.text(0.5, 0.5, "LOGO", ha="center", va="center")
+plt.axis("off")
+plt.tight_layout()
+plt.savefig("examples/logo.png")
+plt.close()
 
+print("Wrote examples/template.pptx and examples/logo.png")
