@@ -3,9 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from pptx import Presentation
-import typer
 from rich.console import Console
 from rich.table import Table
+import typer
 
 from .config import load_config
 from .generator import generate
