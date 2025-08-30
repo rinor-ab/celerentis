@@ -17,14 +17,14 @@ console = Console()
 
 
 @app.command()
-def validate(config: Path):
+def validate(config: Path) -> None:
     """Validate a YAML config file."""
     load_config(config)
     console.print("[green]✓ Config is valid[/]")
 
 
 @app.command()
-def inspect(template: Path):
+def inspect(template: Path) -> None:
     """List known tokens present in a template PPTX."""
     prs = Presentation(str(template))
     found: set[str] = set()
@@ -43,7 +43,7 @@ def inspect(template: Path):
 
 
 @app.command(name="generate")
-def generate_cmd(config: Path, output: Path | None = None):
+def generate_cmd(config: Path, output: Path | None = None) -> None:
     """Generate a deck using a YAML config."""
     cfg = load_config(config)
     if output is not None:
@@ -52,7 +52,7 @@ def generate_cmd(config: Path, output: Path | None = None):
     console.print(f"[green]✓ Wrote[/] {out}")
 
 
-def main():
+def main() -> None:
     app()
 
 
