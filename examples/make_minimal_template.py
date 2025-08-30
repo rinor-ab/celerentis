@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import os
-
-# Use headless backend before importing pyplot
-os.environ["MPLBACKEND"] = "Agg"
-
 from matplotlib import pyplot as plt
 from pptx import Presentation
 from pptx.util import Inches
+
+# Use a headless backend for CI
+plt.switch_backend("Agg")
 
 
 prs = Presentation()
