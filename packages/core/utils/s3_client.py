@@ -21,6 +21,10 @@ class S3Client:
         if not all([self.bucket_name, self.access_key, self.secret_key]):
             raise ValueError("Missing required S3 environment variables")
         
+        # For MinIO, we need to use external URLs for presigned URLs to work from browser
+        # But keep internal URLs for internal operations
+        self.external_endpoint_url = os.getenv("S3_EXTERNAL_ENDPOINT", "http://localhost:9000")
+        
         # Initialize S3 client
         self.s3_client = boto3.client(
             's3',
@@ -168,24 +172,53 @@ class S3Client:
             True if file exists, False otherwise
         """
         try:
-            self.s3_client.head_object(
-                Bucket=self.bucket_name,
-                Key=s3_key
-            )
+            self.s3_client.head_object(Bucket=self.bucket_name, Key=s3_key)
             return True
-            
         except ClientError as e:
             if e.response['Error']['Code'] == '404':
                 return False
-            print(f"Error checking file existence: {e}")
+            raise
+        except Exception as e:
+            print(f"Error checking if file exists: {e}")
             return False
-        except NoCredentialsError as e:
-            print(f"Failed to check file existence: {e}")
-            return False
+    
+    def list_job_directories(self) -> list[str]:
+        """
+        List all job directories from S3.
+        
+        Returns:
+            List of job IDs (directory names)
+        """
+        try:
+            # List all objects with prefix 'jobs/'
+            response = self.s3_client.list_objects_v2(
+                Bucket=self.bucket_name,
+                Prefix='jobs/'
+            )
+            
+            job_dirs = set()  # Use set to avoid duplicates
+            
+            if 'Contents' in response:
+                for obj in response['Contents']:
+                    key = obj['Key']
+                    # Extract job ID from key like 'jobs/12345678-1234-1234-1234-123456789abc/template.pptx'
+                    if key.startswith('jobs/') and '/' in key[5:]:
+                        # Split by '/' and get the job ID part
+                        parts = key.split('/')
+                        if len(parts) >= 3:  # jobs/[job_id]/[filename]
+                            job_id = parts[1]
+                            if job_id:  # Ensure it's not empty
+                                job_dirs.add(job_id)
+            
+            return list(job_dirs)
+            
+        except Exception as e:
+            print(f"Error listing job directories: {e}")
+            return []
     
     def get_presigned_url(self, s3_key: str, expiration: int = 3600) -> Optional[str]:
         """
-        Generate a presigned URL for file download.
+        Generate a presigned URL for downloading a file.
         
         Args:
             s3_key: S3 object key
@@ -195,7 +228,20 @@ class S3Client:
             Presigned URL or None if failed
         """
         try:
-            url = self.s3_client.generate_presigned_url(
+            # Create a temporary client with external endpoint for presigned URLs
+            external_s3_client = boto3.client(
+                's3',
+                endpoint_url=self.external_endpoint_url,
+                aws_access_key_id=self.access_key,
+                aws_secret_access_key=self.secret_key,
+                region_name=self.region,
+                config=Config(
+                    retries=dict(max_attempts=3),
+                    max_pool_connections=50
+                )
+            )
+            
+            url = external_s3_client.generate_presigned_url(
                 'get_object',
                 Params={
                     'Bucket': self.bucket_name,
@@ -203,9 +249,10 @@ class S3Client:
                 },
                 ExpiresIn=expiration
             )
+            
             return url
             
-        except (ClientError, NoCredentialsError) as e:
+        except Exception as e:
             print(f"Failed to generate presigned URL: {e}")
             return None
     

@@ -48,6 +48,62 @@ async def root():
     return {"message": "Celerentis API is running", "version": "1.0.0"}
 
 
+@app.get("/jobs", response_model=list[JobResponse])
+async def list_jobs():
+    """List all jobs."""
+    try:
+        # In a real app, this would query the database
+        # For now, we'll check S3 for all job directories and their status
+        
+        # Get list of all job directories from S3
+        job_dirs = s3_client.list_job_directories()
+        
+        jobs = []
+        for job_id in job_dirs:
+            try:
+                # Check if job has output file (completed)
+                output_key = f"jobs/{job_id}/output.pptx"
+                if s3_client.file_exists(output_key):
+                    download_url = s3_client.get_presigned_url(output_key)
+                    status = JobStatus.DONE
+                    message = "IM generation complete"
+                else:
+                    # Check if template exists (job created but not completed)
+                    template_key = f"jobs/{job_id}/template.pptx"
+                    if s3_client.file_exists(template_key):
+                        status = JobStatus.RUNNING
+                        message = "Processing IM generation..."
+                        download_url = None
+                    else:
+                        continue  # Skip invalid job directories
+                
+                # For now, use placeholder company name (would come from DB in real app)
+                job = JobResponse(
+                    id=job_id,
+                    company_name=f"Company {job_id[:8]}",  # Would come from DB
+                    website=None,
+                    status=status,
+                    message=message,
+                    download_url=download_url,
+                    created_at=datetime.utcnow(),  # Would come from DB
+                    updated_at=datetime.utcnow()
+                )
+                jobs.append(job)
+                
+            except Exception as e:
+                print(f"Error processing job {job_id}: {e}")
+                continue
+        
+        # Sort by creation date (newest first)
+        jobs.sort(key=lambda x: x.created_at, reverse=True)
+        
+        return jobs
+        
+    except Exception as e:
+        print(f"Error listing jobs: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to list jobs: {str(e)}")
+
+
 @app.post("/jobs", response_model=JobResponse)
 async def create_job(
     company_name: str = Form(...),

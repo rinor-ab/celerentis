@@ -1,33 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Plus, FileText, Download, Clock, CheckCircle, AlertCircle } from 'lucide-react'
 
-// Mock data for demonstration
-const mockJobs = [
-  {
-    id: '1',
-    companyName: 'TechCorp Inc.',
-    status: 'done',
-    createdAt: '2024-01-15T10:30:00Z',
-    downloadUrl: '#'
-  },
-  {
-    id: '2',
-    companyName: 'StartupXYZ',
-    status: 'running',
-    createdAt: '2024-01-15T11:00:00Z',
-    downloadUrl: null
-  },
-  {
-    id: '3',
-    companyName: 'Global Solutions',
-    status: 'queued',
-    createdAt: '2024-01-15T11:15:00Z',
-    downloadUrl: null
-  }
-]
+interface Job {
+  id: string
+  company_name: string
+  status: string
+  created_at: string
+  download_url?: string
+}
 
 const statusConfig = {
   queued: { label: 'Queued', icon: Clock, color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
@@ -37,15 +20,45 @@ const statusConfig = {
 }
 
 export default function Dashboard() {
-  const [jobs] = useState(mockJobs)
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const fetchJobs = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/jobs')
+      if (!response.ok) {
+        throw new Error('Failed to fetch jobs')
+      }
+      const jobsData = await response.json()
+      setJobs(jobsData)
+      setError('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch jobs')
+      console.error('Error fetching jobs:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchJobs()
+  }, [])
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      })
+    } catch {
+      return 'Unknown date'
+    }
   }
 
   return (
@@ -79,7 +92,15 @@ export default function Dashboard() {
 
         {/* Jobs table */}
         <div className="card">
-          {jobs.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500">Loading jobs...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12 text-red-600">
+              <p>{error}</p>
+            </div>
+          ) : jobs.length === 0 ? (
             <div className="text-center py-12">
               <FileText className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">No jobs yet</h3>
@@ -119,7 +140,7 @@ export default function Dashboard() {
                       <tr key={job.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">
-                            {job.companyName}
+                            {job.company_name}
                           </div>
                           <div className="text-sm text-gray-500">
                             ID: {job.id}
@@ -132,12 +153,12 @@ export default function Dashboard() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(job.createdAt)}
+                          {formatDate(job.created_at)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          {job.status === 'done' ? (
+                          {job.status === 'done' && job.download_url ? (
                             <a
-                              href={job.downloadUrl}
+                              href={job.download_url}
                               className="text-primary-600 hover:text-primary-900 flex items-center"
                             >
                               <Download className="h-4 w-4 mr-1" />
