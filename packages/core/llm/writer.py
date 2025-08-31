@@ -8,9 +8,9 @@ from typing import List, Dict, Any, Optional
 from openai import OpenAI
 
 # Use absolute imports
-from models.slide import SlideDef, SlideDraft
-from models.document import DocumentBundle
-from models.financials import FinancialsData
+from packages.core.models.slide import SlideDef, SlideDraft
+from packages.core.models.document import DocumentBundle
+from packages.core.models.financials import FinancialsData
 
 
 def write_section_texts(

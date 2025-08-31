@@ -70,9 +70,21 @@ def create_im_generation_task(
             }
         )
         
+        print(f"=== STARTING IM GENERATION FOR JOB {job_id} ===")
+        print(f"Company: {company_name}")
+        print(f"Website: {website}")
+        print(f"Template key: {template_key}")
+        print(f"Financials key: {financials_key}")
+        print(f"Bundle key: {bundle_key}")
+        
+        if not template_key:
+            raise Exception("No template provided")
+        
+        print("Downloading template from S3...")
         template_bytes = s3_client.download_bytes(template_key)
         if not template_bytes:
             raise Exception("Failed to download template file")
+        print(f"Template downloaded successfully: {len(template_bytes)} bytes")
         
         # Step 2: Analyze template
         self.update_state(
@@ -84,13 +96,31 @@ def create_im_generation_task(
             }
         )
         
+        print("Starting template analysis...")
         template_analysis = analyze_template(template_bytes)
+        print(f"Template analysis completed: {len(template_analysis.slide_defs)} slides found")
+        print(f"Chart tokens found: {len(template_analysis.chart_tokens)}")
+        print(f"Style map entries: {len(template_analysis.style_map)}")
         
-        # Step 3: Process financials (if provided)
+        if not template_analysis.slide_defs:
+            print("WARNING: No slides found in template!")
+            # Create a basic slide definition to prevent failure
+            template_analysis.slide_defs = [
+                SlideDef(
+                    slide_index=0,
+                    title="Default Slide",
+                    tokens=["{{COMPANY_NAME}}", "{{CONTENT}}"],
+                    chart_tokens=[],
+                    style_sample=""
+                )
+            ]
+            print("Created fallback slide definition")
+        
+        # Step 2: Process financials (if provided)
         self.update_state(
             state="PROGRESS",
             meta={
-                "current": 3,
+                "current": 2,
                 "total": 6,
                 "status": "Processing financial data..."
             }
@@ -98,17 +128,29 @@ def create_im_generation_task(
         
         financials_data = None
         if financials_key:
-            financials_bytes = s3_client.download_bytes(financials_key)
-            if financials_bytes:
-                financials_data = parse_financials(financials_bytes)
+            try:
+                print(f"Downloading financials from S3: {financials_key}")
+                financials_bytes = s3_client.download_bytes(financials_key)
+                if financials_bytes:
+                    print(f"Successfully downloaded financials, size: {len(financials_bytes)} bytes")
+                    print("Starting financials parsing...")
+                    financials_data = parse_financials(financials_bytes)
+                    print(f"Financials parsing completed. Series: {len(financials_data.series) if financials_data else 0}")
+                else:
+                    print("Failed to download financials from S3")
+            except Exception as e:
+                print(f"Error processing financials: {e}")
+                print(f"Financials processing traceback: {traceback.format_exc()}")
+                # Continue without financials
+                financials_data = None
         
-        # Step 4: Process document bundle (if provided)
+        # Step 3: Process document bundle (if provided)
         self.update_state(
             state="PROGRESS",
             meta={
-                "current": 4,
+                "current": 3,
                 "total": 6,
-                "status": "Processing documents..."
+                "status": "Processing document bundle..."
             }
         )
         
@@ -231,6 +273,6 @@ def create_im_generation_task(
 
 
 # Import models to avoid circular imports
-from models.document import DocumentBundle
-from models.financials import FinancialsData
-from models.slide import SlideDraft
+from packages.core.models.document import DocumentBundle
+from packages.core.models.financials import FinancialsData
+from packages.core.models.slide import SlideDraft

@@ -11,8 +11,8 @@ from pptx.util import Inches
 from PIL import Image
 
 # Use absolute imports
-from models.slide import SlideDraft, ChartToken
-from models.financials import FinancialsData
+from packages.core.models.slide import SlideDraft, ChartToken
+from packages.core.models.financials import FinancialsData
 
 
 def build_deck(
@@ -262,7 +262,7 @@ def _add_company_logo(prs: Presentation, logo_bytes: bytes):
                 top_margin = Inches(0.5)  # 0.5 inch from top
                 
                 slide.shapes.add_picture(
-                    logo_output.getvalue(),
+                    io.BytesIO(logo_output.getvalue()),  # Convert to BytesIO object
                     slide_width - right_margin - Inches(2),  # Right side with margin
                     top_margin,                             # Top with margin
                     width=Inches(2),

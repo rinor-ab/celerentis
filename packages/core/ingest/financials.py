@@ -8,7 +8,7 @@ from openpyxl.workbook.workbook import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 
 # Use absolute imports
-from models.financials import FinancialSeries, FinancialsData
+from packages.core.models.financials import FinancialSeries, FinancialsData
 
 
 def parse_financials(xlsx_bytes: bytes) -> FinancialsData:

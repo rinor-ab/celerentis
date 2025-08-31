@@ -9,7 +9,7 @@ from pptx.shapes.placeholder import SlidePlaceholder
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 
 # Use absolute imports
-from models.slide import SlideDef, ChartToken, TemplateAnalysis
+from packages.core.models.slide import SlideDef, ChartToken, TemplateAnalysis
 
 
 def analyze_template(pptx_bytes: bytes) -> TemplateAnalysis:
@@ -23,15 +23,19 @@ def analyze_template(pptx_bytes: bytes) -> TemplateAnalysis:
         TemplateAnalysis with slide definitions and style mapping
     """
     try:
+        print(f"Starting template analysis with {len(pptx_bytes)} bytes")
         prs = Presentation(io.BytesIO(pptx_bytes))
+        print(f"Loaded presentation with {len(prs.slides)} slides")
         
         slide_defs = []
         chart_tokens = []
         style_map = {}
         
         for slide_idx, slide in enumerate(prs.slides):
+            print(f"Analyzing slide {slide_idx + 1}")
             slide_def = _analyze_slide(slide, slide_idx)
             if slide_def:
+                print(f"  Slide {slide_idx + 1} analysis successful: {slide_def.title}")
                 slide_defs.append(slide_def)
                 
                 # Extract chart tokens from this slide
@@ -41,6 +45,10 @@ def analyze_template(pptx_bytes: bytes) -> TemplateAnalysis:
                 # Extract style information
                 slide_styles = _extract_slide_styles(slide)
                 style_map.update(slide_styles)
+            else:
+                print(f"  Slide {slide_idx + 1} analysis failed")
+        
+        print(f"Template analysis completed: {len(slide_defs)} slides, {len(chart_tokens)} charts")
         
         return TemplateAnalysis(
             slide_defs=slide_defs,
@@ -50,6 +58,8 @@ def analyze_template(pptx_bytes: bytes) -> TemplateAnalysis:
         
     except Exception as e:
         print(f"Error analyzing template: {e}")
+        import traceback
+        traceback.print_exc()
         # Return empty analysis on error
         return TemplateAnalysis(
             slide_defs=[],
@@ -172,22 +182,19 @@ def _analyze_chart_shape(shape: BaseShape, slide_index: int) -> ChartToken:
         return None
 
 
-def _extract_slide_styles(slide: Slide) -> Dict[str, Any]:
+def _extract_slide_styles(slide: Slide) -> Dict[str, str]:
     """Extract style information from slide."""
     styles = {}
     
     # Extract background information
     if slide.background:
-        styles["background"] = {
-            "type": str(slide.background.type) if hasattr(slide.background, 'type') else "unknown"
-        }
+        bg_type = str(slide.background.type) if hasattr(slide.background, 'type') else "unknown"
+        styles["background"] = bg_type
     
     # Extract layout information
     if slide.slide_layout:
-        styles["layout"] = {
-            "name": slide.slide_layout.name,
-            "type": str(slide.slide_layout.type) if hasattr(slide.slide_layout, 'type') else "unknown"
-        }
+        layout_name = slide.slide_layout.name if hasattr(slide.slide_layout, 'name') else "unknown"
+        styles["layout"] = layout_name
     
     return styles
 
