@@ -192,7 +192,9 @@ Generate professional, investment-focused content for this slide."""
                 content=parsed.get("content", ""),
                 bullet_points=parsed.get("bullet_points", []),
                 notes=parsed.get("notes", ""),
-                slide_title=slide_def.title
+                slide_title=slide_def.title,
+                company_name=context["company_name"],
+                website=context["website"]
             )
         except json.JSONDecodeError:
             # Fallback if JSON parsing fails
@@ -229,5 +231,7 @@ def _create_fallback_draft(slide_def: SlideDef, company_name: str) -> SlideDraft
         content=content,
         bullet_points=bullet_points,
         notes="Fallback content generated due to LLM error",
-        slide_title=slide_def.title
+        slide_title=slide_def.title,
+        company_name=company_name,
+        website=""
     )

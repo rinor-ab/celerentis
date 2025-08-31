@@ -99,12 +99,40 @@ def _update_slide_content(slide: Slide, slide_draft: SlideDraft):
     # Find text shapes and update content
     for shape in slide.shapes:
         if hasattr(shape, 'text'):
-            # Look for content placeholders
-            if "{{CONTENT}}" in shape.text:
-                shape.text = shape.text.replace("{{CONTENT}}", slide_draft.content)
-            elif "{{BULLET_POINTS}}" in shape.text:
+            text = shape.text
+            
+            # Handle specific template tokens
+            if "{{ENHANCE_BULLET_POINTS:" in text:
+                # Extract the section name from the token
+                import re
+                match = re.search(r'\{\{ENHANCE_BULLET_POINTS:([^}]+)\}\}', text)
+                if match:
+                    section_name = match.group(1)
+                    # Replace with generated bullet points
+                    bullet_text = "\n• ".join([""] + slide_draft.bullet_points)
+                    shape.text = text.replace(f"{{{{ENHANCE_BULLET_POINTS:{section_name}}}}}", bullet_text)
+            
+            elif "{{ENHANCE_CONTENT:" in text:
+                # Extract the section name from the token
+                import re
+                match = re.search(r'\{\{ENHANCE_CONTENT:([^}]+)\}\}', text)
+                if match:
+                    section_name = match.group(1)
+                    # Replace with generated content
+                    shape.text = text.replace(f"{{{{ENHANCE_CONTENT:{section_name}}}}}", slide_draft.content)
+            
+            # Handle generic tokens as fallback
+            elif "{{CONTENT}}" in text:
+                shape.text = text.replace("{{CONTENT}}", slide_draft.content)
+            elif "{{BULLET_POINTS}}" in text:
                 bullet_text = "\n• ".join([""] + slide_draft.bullet_points)
-                shape.text = shape.text.replace("{{BULLET_POINTS}}", bullet_text)
+                shape.text = text.replace("{{BULLET_POINTS}}", bullet_text)
+            
+            # Handle company name and website tokens
+            elif "{{COMPANY_NAME}}" in text:
+                shape.text = text.replace("{{COMPANY_NAME}}", slide_draft.company_name if hasattr(slide_draft, 'company_name') else "Company")
+            elif "{{WEBSITE}}" in text:
+                shape.text = text.replace("{{WEBSITE}}", slide_draft.website if hasattr(slide_draft, 'website') else "www.company.com")
 
 
 def _add_charts(prs: Presentation, chart_tokens: List[ChartToken], financials: FinancialsData):

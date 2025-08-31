@@ -22,28 +22,14 @@ class SlideDef(BaseModel):
 
 
 class SlideDraft(BaseModel):
-    """Generated slide content."""
+    """Generated slide content draft."""
     slide_index: int
-    title: str
-    bullets: List[str] = Field(..., min_items=3, max_items=5)
-    notes: Optional[str] = None
-    sources: List[str] = Field(default_factory=list)
-
-    class Config:
-        """Pydantic config."""
-        json_schema_extra = {
-            "example": {
-                "slide_index": 0,
-                "title": "Company Overview",
-                "bullets": [
-                    "Leading provider of AI-powered financial analytics",
-                    "Established in 2020 with headquarters in San Francisco",
-                    "Team of 25+ experienced data scientists and engineers"
-                ],
-                "notes": "Verify employee count and founding date",
-                "sources": ["Company website", "LinkedIn company page"]
-            }
-        }
+    content: str
+    bullet_points: List[str]
+    notes: str
+    slide_title: str
+    company_name: str = ""
+    website: str = ""
 
 
 class TemplateAnalysis(BaseModel):
