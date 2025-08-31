@@ -176,6 +176,16 @@ async def create_job(
             "updated_at": datetime.utcnow()
         }
         
+        # Store job metadata in S3 for retrieval
+        metadata_key = f"jobs/{job_id}/metadata.json"
+        import json
+        metadata_json = json.dumps(job_data, default=str)
+        s3_client.upload_bytes(
+            metadata_json.encode('utf-8'), 
+            metadata_key, 
+            "application/json"
+        )
+        
         # Enqueue worker task
         task = create_im_generation_task.delay(
             job_id=job_id,
@@ -212,9 +222,22 @@ async def create_job(
 async def get_job_status(job_id: str):
     """Get job status and details."""
     try:
-        # In a real app, this would query the database
-        # For now, we'll check S3 for the output file
+        # Try to get job metadata from S3
+        metadata_key = f"jobs/{job_id}/metadata.json"
+        company_name = "Company Name"  # Default fallback
+        website = None
         
+        try:
+            metadata_bytes = s3_client.download_bytes(metadata_key)
+            if metadata_bytes:
+                import json
+                metadata = json.loads(metadata_bytes.decode('utf-8'))
+                company_name = metadata.get("company_name", "Company Name")
+                website = metadata.get("website")
+        except Exception as e:
+            print(f"Error retrieving job metadata: {e}")
+        
+        # Check if job is complete
         output_key = f"jobs/{job_id}/output.pptx"
         
         if s3_client.file_exists(output_key):
@@ -222,8 +245,8 @@ async def get_job_status(job_id: str):
             download_url = s3_client.get_presigned_url(output_key)
             return JobResponse(
                 id=job_id,
-                company_name="Company Name",  # Would come from DB
-                website=None,
+                company_name=company_name,
+                website=website,
                 status=JobStatus.DONE,
                 message="IM generation complete",
                 download_url=download_url,
@@ -235,8 +258,8 @@ async def get_job_status(job_id: str):
             # In a real app, this would check the database
             return JobResponse(
                 id=job_id,
-                company_name="Company Name",
-                website=None,
+                company_name=company_name,
+                website=website,
                 status=JobStatus.RUNNING,
                 message="Processing IM generation...",
                 download_url=None,

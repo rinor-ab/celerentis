@@ -18,7 +18,7 @@ class SlideDef(BaseModel):
     title: str
     tokens: List[str]  # e.g., ["{{COMPANY_NAME}}", "{{TAGLINE}}"]
     chart_tokens: List[ChartToken]
-    style_sample: str  # Text sample for style matching
+    style_sample: Optional[str] = ""  # Text sample for style matching
 
 
 class SlideDraft(BaseModel):
