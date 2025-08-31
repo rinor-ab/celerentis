@@ -252,17 +252,27 @@ def _add_company_logo(prs: Presentation, logo_bytes: bytes):
                 # Replace placeholder
                 logo_placeholder.insert_picture(logo_output.getvalue())
             else:
-                # Add logo to top right
+                # Add logo to top right using presentation dimensions
+                slide_width = prs.slide_width
+                slide_height = prs.slide_height
+                
+                # Convert from EMU to inches for positioning
+                from pptx.util import Inches
+                right_margin = Inches(1)  # 1 inch from right
+                top_margin = Inches(0.5)  # 0.5 inch from top
+                
                 slide.shapes.add_picture(
                     logo_output.getvalue(),
-                    slide.width - 250,  # Right side
-                    50,                 # Top
-                    width=200,
-                    height=100
+                    slide_width - right_margin - Inches(2),  # Right side with margin
+                    top_margin,                             # Top with margin
+                    width=Inches(2),
+                    height=Inches(1)
                 )
                 
     except Exception as e:
         print(f"Error adding company logo: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def _find_logo_placeholder(slide: Slide) -> Optional[BaseShape]:

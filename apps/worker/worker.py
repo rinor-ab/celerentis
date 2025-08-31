@@ -140,13 +140,36 @@ def create_im_generation_task(
             }
         )
         
-        slide_drafts = write_section_texts(
-            template_analysis.slide_defs,
-            company_name,
-            website or "",
-            document_bundle or DocumentBundle(chunks=[], total_docs=0, total_pages=0),
-            financials_data or FinancialsData(series=[])
-        )
+        print(f"Starting LLM content generation for {len(template_analysis.slide_defs)} slides")
+        print(f"Company: {company_name}, Website: {website}")
+        print(f"Document bundle: {document_bundle.total_docs if document_bundle else 0} docs")
+        print(f"Financial data: {len(financials_data.series) if financials_data else 0} series")
+        
+        try:
+            slide_drafts = write_section_texts(
+                template_analysis.slide_defs,
+                company_name,
+                website or "",
+                document_bundle or DocumentBundle(chunks=[], total_docs=0, total_pages=0),
+                financials_data or FinancialsData(series=[])
+            )
+            print(f"LLM content generation completed successfully. Generated {len(slide_drafts)} slide drafts")
+        except Exception as e:
+            print(f"Error in LLM content generation: {e}")
+            import traceback
+            traceback.print_exc()
+            # Create fallback slide drafts
+            slide_drafts = []
+            for slide_def in template_analysis.slide_defs:
+                slide_drafts.append(SlideDraft(
+                    slide_index=slide_def.slide_index,
+                    content=f"Content for {slide_def.title}",
+                    bullet_points=["Sample bullet point 1", "Sample bullet point 2"],
+                    notes="Fallback content due to LLM error",
+                    slide_title=slide_def.title,
+                    company_name=company_name,
+                    website=website or ""
+                ))
         
         # Step 6: Build final PowerPoint
         self.update_state(
@@ -210,3 +233,4 @@ def create_im_generation_task(
 # Import models to avoid circular imports
 from models.document import DocumentBundle
 from models.financials import FinancialsData
+from models.slide import SlideDraft

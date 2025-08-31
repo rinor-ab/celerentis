@@ -60,7 +60,7 @@ def analyze_template(pptx_bytes: bytes) -> TemplateAnalysis:
 
 def _analyze_slide(slide: Slide, slide_index: int) -> SlideDef:
     """Analyze individual slide for structure and content."""
-    title = _extract_slide_title(slide)
+    title = _extract_slide_title(slide, slide_index)
     tokens = _find_tokens(slide)
     
     return SlideDef(
@@ -71,16 +71,22 @@ def _analyze_slide(slide: Slide, slide_index: int) -> SlideDef:
     )
 
 
-def _extract_slide_title(slide: Slide) -> str:
+def _extract_slide_title(slide: Slide, slide_index: int) -> str:
     """Extract slide title from title placeholder or first text shape."""
     title = ""
     
     # Look for title placeholder
     for shape in slide.shapes:
-        if isinstance(shape, SlidePlaceholder) and shape.placeholder_type == 1:  # Title
-            if shape.text:
-                title = shape.text.strip()
-                break
+        if isinstance(shape, SlidePlaceholder):
+            try:
+                # Check if placeholder_type attribute exists and is title (1)
+                if hasattr(shape, 'placeholder_type') and shape.placeholder_type == 1:
+                    if hasattr(shape, 'text') and shape.text:
+                        title = shape.text.strip()
+                        break
+            except AttributeError:
+                # Skip if placeholder_type doesn't exist
+                continue
     
     # If no title placeholder, look for first text shape
     if not title:
@@ -158,12 +164,7 @@ def _analyze_chart_shape(shape: BaseShape, slide_index: int) -> ChartToken:
             token=token_name,
             chart_type=chart_type,
             slide_index=slide_index,
-            bounding_box={
-                "left": left,
-                "top": top,
-                "width": width,
-                "height": height
-            }
+            bbox=(left, top, width, height)
         )
         
     except Exception as e:
