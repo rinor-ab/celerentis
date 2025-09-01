@@ -135,12 +135,13 @@ export default function JobStatusPage() {
             <div className="flex items-center">
               <Link href="/" className="flex items-center text-gray-500 hover:text-gray-700">
                 <ArrowLeft className="h-5 w-5 mr-2" />
-                Back to Dashboard
+                <span className="hidden sm:inline">Back to Dashboard</span>
+                <span className="sm:hidden">Back</span>
               </Link>
             </div>
             <div className="flex items-center">
               <FileText className="h-8 w-8 text-primary-600" />
-              <h1 className="ml-3 text-2xl font-bold text-gray-900">Celerentis</h1>
+              <h1 className="ml-3 text-xl sm:text-2xl font-bold text-gray-900">Celerentis</h1>
             </div>
           </div>
         </div>
@@ -170,7 +171,7 @@ export default function JobStatusPage() {
           <h3 className="text-lg font-medium text-gray-900 mb-4">Job Status</h3>
           
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <span className="text-sm font-medium text-gray-700">Status:</span>
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${status.bgColor} ${status.color}`}>
                 <StatusIcon className="h-3 w-3 mr-1" />
@@ -178,17 +179,17 @@ export default function JobStatusPage() {
               </span>
             </div>
             
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <span className="text-sm font-medium text-gray-700">Message:</span>
-              <span className="text-sm text-gray-900">{job.message}</span>
+              <span className="text-sm text-gray-900 break-words">{job.message}</span>
             </div>
             
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <span className="text-sm font-medium text-gray-700">Created:</span>
               <span className="text-sm text-gray-900">{formatDate(job.created_at)}</span>
             </div>
             
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <span className="text-sm font-medium text-gray-700">Last Updated:</span>
               <span className="text-sm text-gray-900">{formatDate(job.updated_at)}</span>
             </div>
@@ -212,11 +213,11 @@ export default function JobStatusPage() {
         <div className="card">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Actions</h3>
           
-          <div className="flex space-x-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             {job.status === 'done' && job.download_url ? (
               <button
                 onClick={handleDownload}
-                className="btn-primary flex items-center"
+                className="btn-primary flex items-center justify-center"
               >
                 <Download className="h-4 w-4 mr-2" />
                 Download IM
@@ -224,7 +225,7 @@ export default function JobStatusPage() {
             ) : job.status === 'error' ? (
               <button
                 onClick={fetchJobStatus}
-                className="btn-secondary flex items-center"
+                className="btn-secondary flex items-center justify-center"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Retry
@@ -233,14 +234,14 @@ export default function JobStatusPage() {
               <button
                 onClick={fetchJobStatus}
                 disabled={polling}
-                className="btn-secondary flex items-center"
+                className="btn-secondary flex items-center justify-center"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${polling ? 'animate-spin' : ''}`} />
                 Refresh Status
               </button>
             )}
             
-            <Link href="/" className="btn-secondary">
+            <Link href="/" className="btn-secondary text-center">
               Back to Dashboard
             </Link>
           </div>

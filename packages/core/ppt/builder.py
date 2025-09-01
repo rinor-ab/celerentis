@@ -96,43 +96,54 @@ def _insert_slide_content(prs: Presentation, slide_drafts: List[SlideDraft]):
 
 def _update_slide_content(slide: Slide, slide_draft: SlideDraft):
     """Update individual slide with generated content."""
+    import re
+    
     # Find text shapes and update content
     for shape in slide.shapes:
-        if hasattr(shape, 'text'):
+        if hasattr(shape, 'text') and shape.text:
             text = shape.text
+            original_text = text
             
-            # Handle specific template tokens
-            if "{{ENHANCE_BULLET_POINTS:" in text:
-                # Extract the section name from the token
-                import re
-                match = re.search(r'\{\{ENHANCE_BULLET_POINTS:([^}]+)\}\}', text)
-                if match:
-                    section_name = match.group(1)
-                    # Replace with generated bullet points
+            # Handle specific template tokens with regex
+            # Replace ENHANCE_BULLET_POINTS tokens
+            bullet_pattern = r'\{\{ENHANCE_BULLET_POINTS:([^}]+)\}\}'
+            if re.search(bullet_pattern, text):
+                if slide_draft.bullet_points:
                     bullet_text = "\n• ".join([""] + slide_draft.bullet_points)
-                    shape.text = text.replace(f"{{{{ENHANCE_BULLET_POINTS:{section_name}}}}}", bullet_text)
+                    text = re.sub(bullet_pattern, bullet_text, text)
+                else:
+                    text = re.sub(bullet_pattern, "• Key points will be provided", text)
             
-            elif "{{ENHANCE_CONTENT:" in text:
-                # Extract the section name from the token
-                import re
-                match = re.search(r'\{\{ENHANCE_CONTENT:([^}]+)\}\}', text)
-                if match:
-                    section_name = match.group(1)
-                    # Replace with generated content
-                    shape.text = text.replace(f"{{{{ENHANCE_CONTENT:{section_name}}}}}", slide_draft.content)
+            # Replace ENHANCE_CONTENT tokens
+            content_pattern = r'\{\{ENHANCE_CONTENT:([^}]+)\}\}'
+            if re.search(content_pattern, text):
+                if slide_draft.content:
+                    text = re.sub(content_pattern, slide_draft.content, text)
+                else:
+                    text = re.sub(content_pattern, "Content will be provided", text)
             
             # Handle generic tokens as fallback
-            elif "{{CONTENT}}" in text:
-                shape.text = text.replace("{{CONTENT}}", slide_draft.content)
-            elif "{{BULLET_POINTS}}" in text:
-                bullet_text = "\n• ".join([""] + slide_draft.bullet_points)
-                shape.text = text.replace("{{BULLET_POINTS}}", bullet_text)
+            if "{{CONTENT}}" in text:
+                text = text.replace("{{CONTENT}}", slide_draft.content or "Content will be provided")
+            
+            if "{{BULLET_POINTS}}" in text:
+                if slide_draft.bullet_points:
+                    bullet_text = "\n• ".join([""] + slide_draft.bullet_points)
+                    text = text.replace("{{BULLET_POINTS}}", bullet_text)
+                else:
+                    text = text.replace("{{BULLET_POINTS}}", "• Key points will be provided")
             
             # Handle company name and website tokens
-            elif "{{COMPANY_NAME}}" in text:
-                shape.text = text.replace("{{COMPANY_NAME}}", slide_draft.company_name if hasattr(slide_draft, 'company_name') else "Company")
-            elif "{{WEBSITE}}" in text:
-                shape.text = text.replace("{{WEBSITE}}", slide_draft.website if hasattr(slide_draft, 'website') else "www.company.com")
+            if "{{COMPANY_NAME}}" in text:
+                text = text.replace("{{COMPANY_NAME}}", slide_draft.company_name or "Company")
+            
+            if "{{WEBSITE}}" in text:
+                text = text.replace("{{WEBSITE}}", slide_draft.website or "www.company.com")
+            
+            # Only update if text actually changed
+            if text != original_text:
+                shape.text = text
+                print(f"Updated slide {slide_draft.slide_index} shape with content")
 
 
 def _add_charts(prs: Presentation, chart_tokens: List[ChartToken], financials: FinancialsData):

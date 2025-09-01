@@ -35,83 +35,160 @@ def write_section_texts(
     """
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     
+    # Group slides by type to reduce API calls
+    slide_groups = _group_slides_by_type(slide_defs)
+    
     slide_drafts = []
     
-    for slide_def in slide_defs:
+    for slide_type, slides in slide_groups.items():
         try:
-            # Prepare context for this slide
-            context = _prepare_slide_context(
-                slide_def, company_name, website, document_bundle, financials
-            )
-            
-            # Generate content using LLM
-            slide_draft = _generate_slide_content(client, slide_def, context)
-            
-            if slide_draft:
-                slide_drafts.append(slide_draft)
-                
+            # Generate content for all slides of this type in one API call
+            group_drafts = _generate_group_content(client, slides, slide_type, company_name, website, document_bundle, financials)
+            slide_drafts.extend(group_drafts)
         except Exception as e:
-            print(f"Error generating content for slide {slide_def.slide_index}: {e}")
-            # Create fallback content
-            fallback_draft = _create_fallback_draft(slide_def, company_name)
-            slide_drafts.append(fallback_draft)
+            print(f"Error generating content for slide group {slide_type}: {e}")
+            # Create fallback content for each slide in the group
+            for slide_def in slides:
+                fallback_draft = _create_fallback_draft(slide_def, company_name)
+                slide_drafts.append(fallback_draft)
     
     return slide_drafts
 
 
-def _prepare_slide_context(
-    slide_def: SlideDef,
-    company_name: str,
-    website: str,
-    document_bundle: DocumentBundle,
+def _group_slides_by_type(slide_defs: List[SlideDef]) -> Dict[str, List[SlideDef]]:
+    """Group slides by their type to reduce API calls."""
+    groups = {}
+    
+    for slide_def in slide_defs:
+        slide_type = _determine_slide_type(slide_def.title)
+        if slide_type not in groups:
+            groups[slide_type] = []
+        groups[slide_type].append(slide_def)
+    
+    return groups
+
+
+def _generate_group_content(
+    client: OpenAI, 
+    slides: List[SlideDef], 
+    slide_type: str, 
+    company_name: str, 
+    website: str, 
+    document_bundle: DocumentBundle, 
     financials: FinancialsData
-) -> Dict[str, Any]:
-    """Prepare context information for slide generation."""
-    context = {
-        "company_name": company_name,
-        "website": website,
-        "slide_title": slide_def.title,
-        "slide_tokens": slide_def.tokens,
-        "chart_tokens": [ct.token for ct in slide_def.chart_tokens],
-        "financial_summary": _summarize_financials(financials),
-        "document_summary": _summarize_documents(document_bundle),
-        "slide_type": _determine_slide_type(slide_def.title)
-    }
+) -> List[SlideDraft]:
+    """Generate content for a group of similar slides in one API call."""
     
-    return context
+    # Create a concise context
+    context = _create_concise_context(company_name, website, document_bundle, financials)
+    
+    # Build the prompt for multiple slides
+    slide_titles = [slide.title for slide in slides]
+    
+    system_prompt = f"""You are a professional investment banking analyst. Generate concise, professional content for {len(slides)} slides about {company_name}.
+
+Guidelines:
+- Be concise and professional
+- Avoid repetition across slides
+- Focus on key investment highlights
+- Use bullet points for clarity
+- Each slide should have unique, relevant content
+
+Output: JSON array with one object per slide:
+[
+  {{
+    "slide_index": 0,
+    "content": "Brief main content (1-2 sentences)",
+    "bullet_points": ["Point 1", "Point 2", "Point 3"],
+    "notes": "Brief presenter note"
+  }}
+]"""
+
+    user_prompt = f"""Company: {company_name}
+Website: {website}
+Context: {context}
+
+Generate content for these slides: {', '.join(slide_titles)}
+
+Return JSON array with content for each slide. Make each slide unique and relevant to its title."""
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.7,
+            max_tokens=800  # Reduced from 500 per slide to 800 for multiple slides
+        )
+        
+        content = response.choices[0].message.content
+        
+        # Parse JSON response
+        try:
+            parsed = json.loads(content)
+            slide_drafts = []
+            
+            for item in parsed:
+                slide_draft = SlideDraft(
+                    slide_index=item.get("slide_index", 0),
+                    content=item.get("content", ""),
+                    bullet_points=item.get("bullet_points", []),
+                    notes=item.get("notes", ""),
+                    slide_title=slides[item.get("slide_index", 0)].title if item.get("slide_index", 0) < len(slides) else "Unknown",
+                    company_name=company_name,
+                    website=website
+                )
+                slide_drafts.append(slide_draft)
+            
+            return slide_drafts
+            
+        except json.JSONDecodeError:
+            # Fallback if JSON parsing fails
+            return [_create_fallback_draft(slide, company_name) for slide in slides]
+            
+    except Exception as e:
+        print(f"Error calling OpenAI API: {e}")
+        return [_create_fallback_draft(slide, company_name) for slide in slides]
 
 
-def _summarize_financials(financials: FinancialsData) -> str:
-    """Create a summary of financial data."""
-    if not financials.series:
-        return "No financial data available"
+def _create_concise_context(company_name: str, website: str, document_bundle: DocumentBundle, financials: FinancialsData) -> str:
+    """Create a concise context summary to reduce token usage."""
+    context_parts = []
     
-    summary_parts = []
-    for series in financials.series:
-        if series.data:
-            latest_year, latest_value = series.data[-1]
-            summary_parts.append(f"{series.name}: {latest_value:,.0f} ({latest_year})")
+    # Company info
+    context_parts.append(f"Company: {company_name}")
+    if website:
+        context_parts.append(f"Website: {website}")
     
-    return "; ".join(summary_parts) if summary_parts else "Financial data available"
+    # Financial summary (concise)
+    if financials and financials.series:
+        latest_data = []
+        for series in financials.series[:3]:  # Only first 3 series
+            if series.data:
+                latest_year, latest_value = series.data[-1]
+                latest_data.append(f"{series.name}: {latest_value:,.0f} ({latest_year})")
+        if latest_data:
+            context_parts.append(f"Key Financials: {'; '.join(latest_data)}")
+    
+    # Document summary (concise)
+    if document_bundle and document_bundle.chunks:
+        key_insights = []
+        for chunk in document_bundle.chunks[:3]:  # Only first 3 chunks
+            if len(chunk.text) > 30:
+                text = chunk.text.strip()
+                if "." in text:
+                    key_insights.append(text.split(".")[0] + ".")
+                else:
+                    key_insights.append(text[:80] + "...")
+        if key_insights:
+            context_parts.append(f"Key Insights: {' '.join(key_insights)}")
+    
+    return " | ".join(context_parts)
 
 
-def _summarize_documents(document_bundle: DocumentBundle) -> str:
-    """Create a summary of document content."""
-    if not document_bundle.chunks:
-        return "No additional documents provided"
-    
-    # Get key insights from documents
-    key_phrases = []
-    for chunk in document_bundle.chunks[:5]:  # First 5 chunks
-        if len(chunk.text) > 50:
-            # Extract first sentence or key phrase
-            text = chunk.text.strip()
-            if "." in text:
-                key_phrases.append(text.split(".")[0] + ".")
-            else:
-                key_phrases.append(text[:100] + "...")
-    
-    return " ".join(key_phrases[:3]) if key_phrases else "Document content available"
+
 
 
 def _determine_slide_type(title: str) -> str:
@@ -134,75 +211,7 @@ def _determine_slide_type(title: str) -> str:
         return "content_slide"
 
 
-def _generate_slide_content(client: OpenAI, slide_def: SlideDef, context: Dict[str, Any]) -> SlideDraft:
-    """Generate slide content using OpenAI API."""
-    
-    system_prompt = """You are a professional investment banking analyst creating content for an Information Memorandum (IM) presentation. 
 
-Your task is to generate compelling, professional content for PowerPoint slides based on the provided context.
-
-Guidelines:
-- Use professional, investment banking language
-- Be concise but informative
-- Focus on key value propositions and investment highlights
-- Use bullet points for clarity
-- Maintain consistent tone across slides
-- Include specific data points when available
-- Avoid marketing language - be factual and analytical
-
-Output format: JSON with the following structure:
-{
-    "content": "Main slide content (2-3 sentences)",
-    "bullet_points": ["Key point 1", "Key point 2", "Key point 3"],
-    "notes": "Additional context for presenter"
-}"""
-
-    user_prompt = f"""Generate content for a slide titled "{context['slide_title']}".
-
-Company: {context['company_name']}
-Website: {context['website']}
-Slide Type: {context['slide_type']}
-
-Financial Summary: {context['financial_summary']}
-Document Insights: {context['document_summary']}
-
-Template Tokens: {', '.join(context['slide_tokens']) if context['slide_tokens'] else 'None'}
-Chart Placeholders: {', '.join(context['chart_tokens']) if context['chart_tokens'] else 'None'}
-
-Generate professional, investment-focused content for this slide."""
-
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.7,
-            max_tokens=500
-        )
-        
-        content = response.choices[0].message.content
-        
-        # Parse JSON response
-        try:
-            parsed = json.loads(content)
-            return SlideDraft(
-                slide_index=slide_def.slide_index,
-                content=parsed.get("content", ""),
-                bullet_points=parsed.get("bullet_points", []),
-                notes=parsed.get("notes", ""),
-                slide_title=slide_def.title,
-                company_name=context["company_name"],
-                website=context["website"]
-            )
-        except json.JSONDecodeError:
-            # Fallback if JSON parsing fails
-            return _create_fallback_draft(slide_def, context["company_name"])
-            
-    except Exception as e:
-        print(f"Error calling OpenAI API: {e}")
-        return _create_fallback_draft(slide_def, context["company_name"])
 
 
 def _create_fallback_draft(slide_def: SlideDef, company_name: str) -> SlideDraft:
