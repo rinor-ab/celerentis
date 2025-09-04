@@ -8,7 +8,7 @@ export S3_SECRET_KEY=minio123
 export S3_REGION=eu-central-1
 export REDIS_URL=redis://localhost:6379/0
 export POSTGRES_URL=postgresql+psycopg://celerentis:celerentis123@localhost:5432/celerentis
-export OPENAI_API_KEY=your_openai_api_key_here
+export OPENAI_API_KEY=sk-your-actual-openai-api-key-here
 export PYTHONPATH=/Users/rinor/celerentis
 
 cd apps/worker
