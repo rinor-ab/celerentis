@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProjectCard } from '@/components/ui/project-card';
 import { useProjects } from '@/lib/hooks/use-api';
 import { ProjectStatus, Project } from '@/lib/types';
+import { useEffect } from 'react';
 import { debounce } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -24,6 +25,8 @@ export default function ProjectsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Debounced search
   const debouncedSearch = useMemo(
@@ -31,14 +34,43 @@ export default function ProjectsPage() {
     []
   );
 
-  // Fetch data
-  const { data: projectsData, isLoading: projectsLoading } = useProjects({
-    search: searchQuery || undefined,
-    status: statusFilter === 'all' ? undefined : statusFilter,
-  });
+  // Fetch jobs data instead of projects
+  useEffect(() => {
+    fetchJobs();
+    const interval = setInterval(fetchJobs, 10000); // Refresh every 10 seconds
+    return () => clearInterval(interval);
+  }, []);
 
-  const projects: Project[] = projectsData?.items || [];
-  const totalProjects = projectsData?.total || 0;
+  const fetchJobs = async () => {
+    try {
+      const response = await fetch('/api/jobs');
+      if (response.ok) {
+        const data = await response.json();
+        setJobs(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch jobs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Convert jobs to project format
+  const projects: Project[] = jobs.map(job => ({
+    id: job.id,
+    name: job.company_name,
+    domain: job.website || '',
+    status: job.status === 'done' ? 'complete' : 
+            job.status === 'failed' ? 'error' : 
+            job.status === 'processing' ? 'processing' : 'queued',
+    createdAt: job.created_at,
+    updatedAt: job.updated_at,
+    downloadUrl: job.download_url,
+    files: [],
+    tags: []
+  }));
+
+  const totalProjects = projects.length;
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     debouncedSearch(e.target.value);
@@ -119,7 +151,7 @@ export default function ProjectsPage() {
       </Card>
 
       {/* Projects Content */}
-      {projectsLoading ? (
+      {loading ? (
         <div className={`grid gap-6 ${
           viewMode === 'grid' 
             ? 'md:grid-cols-2 lg:grid-cols-3' 

@@ -147,7 +147,20 @@ export function ProjectCard({ project, className }: ProjectCardProps) {
               </Button>
             )}
             {canDownload && (
-              <Button size="sm" className="flex-1">
+              <Button 
+                size="sm" 
+                className="flex-1"
+                onClick={() => {
+                  if ((project as any).downloadUrl) {
+                    const link = document.createElement('a');
+                    link.href = (project as any).downloadUrl;
+                    link.download = `${project.name.replace(/\s+/g, '_')}_IM.pptx`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }
+                }}
+              >
                 <Download className="mr-2 h-3 w-3" />
                 Download
               </Button>
