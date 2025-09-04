@@ -21,23 +21,21 @@ export function MainLayout({ children }: MainLayoutProps) {
   }, []);
 
   return (
-    <ProtectedRoute>
-      <div className="min-h-screen bg-background">
-        <TopNav />
-        <div className="flex">
-          <SideNav />
-          <main 
-            className={`flex-1 transition-all duration-300 ${
-              sidebarCollapsed ? 'ml-16' : 'ml-64'
-            }`}
-          >
-            <div className="container mx-auto px-4 py-6">
-              {children}
-            </div>
-          </main>
-        </div>
-        <CommandPalette />
+    <div className="min-h-screen bg-background">
+      <TopNav />
+      <div className="flex">
+        <SideNav />
+        <main
+          className={`flex-1 transition-all duration-300 ${
+            sidebarCollapsed ? 'ml-16' : 'ml-64'
+          }`}
+        >
+          <div className="container mx-auto px-4 py-6">
+            {children}
+          </div>
+        </main>
       </div>
-    </ProtectedRoute>
+      <CommandPalette />
+    </div>
   );
 }
