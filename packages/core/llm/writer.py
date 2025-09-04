@@ -1,5 +1,6 @@
 """LLM-powered content writer for generating slide content."""
 
+
 import json
 
 
@@ -11,6 +12,7 @@ from openai import OpenAI
 from packages.core.models.slide import SlideDef, SlideDraft
 from packages.core.models.document import DocumentBundle
 from packages.core.models.financials import FinancialsData
+from packages.core.intelligence.agent import SwissCompanyIntelligenceAgent
 
 
 def write_section_texts(
@@ -35,6 +37,38 @@ def write_section_texts(
     """
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     
+    # Step 1: Gather comprehensive company intelligence
+    print(f"Gathering comprehensive intelligence for {company_name}...")
+    intelligence_agent = SwissCompanyIntelligenceAgent()
+    
+    try:
+        # Prepare attachments from document bundle
+        attachments = []
+        if document_bundle and document_bundle.chunks:
+            # Convert document chunks to attachment format
+            for i, chunk in enumerate(document_bundle.chunks[:5]):  # Limit to first 5 chunks
+                attachments.append({
+                    'name': f'document_chunk_{i+1}.txt',
+                    'type': 'txt',
+                    'content': chunk.text
+                })
+        
+        # Analyze company with intelligence agent
+        intelligence_data = intelligence_agent.analyze_company(
+            company_query=company_name,
+            country_hint="Switzerland",
+            official_domain=website,
+            base_currency="CHF",
+            output_language="de-CH",
+            attachments=attachments if attachments else None
+        )
+        
+        print(f"Intelligence gathering completed. Confidence: {intelligence_data.json_data.confidence_overall}")
+        
+    except Exception as e:
+        print(f"Error in intelligence gathering: {e}")
+        intelligence_data = None
+    
     # Group slides by type to reduce API calls
     slide_groups = _group_slides_by_type(slide_defs)
     
@@ -43,7 +77,10 @@ def write_section_texts(
     for slide_type, slides in slide_groups.items():
         try:
             # Generate content for all slides of this type in one API call
-            group_drafts = _generate_group_content(client, slides, slide_type, company_name, website, document_bundle, financials)
+            group_drafts = _generate_group_content(
+                client, slides, slide_type, company_name, website, 
+                document_bundle, financials, intelligence_data
+            )
             slide_drafts.extend(group_drafts)
         except Exception as e:
             print(f"Error generating content for slide group {slide_type}: {e}")
@@ -75,12 +112,13 @@ def _generate_group_content(
     company_name: str, 
     website: str, 
     document_bundle: DocumentBundle, 
-    financials: FinancialsData
+    financials: FinancialsData,
+    intelligence_data: Optional[Any] = None
 ) -> List[SlideDraft]:
     """Generate content for a group of similar slides in one API call."""
     
-    # Create a concise context
-    context = _create_concise_context(company_name, website, document_bundle, financials)
+    # Create a comprehensive context including intelligence data
+    context = _create_enhanced_context(company_name, website, document_bundle, financials, intelligence_data)
     
     # Build the prompt for multiple slides
     slide_titles = [slide.title for slide in slides]
@@ -153,8 +191,14 @@ Return JSON array with content for each slide. Make each slide unique and releva
         return [_create_fallback_draft(slide, company_name) for slide in slides]
 
 
-def _create_concise_context(company_name: str, website: str, document_bundle: DocumentBundle, financials: FinancialsData) -> str:
-    """Create a concise context summary to reduce token usage."""
+def _create_enhanced_context(
+    company_name: str, 
+    website: str, 
+    document_bundle: DocumentBundle, 
+    financials: FinancialsData,
+    intelligence_data: Optional[Any] = None
+) -> str:
+    """Create an enhanced context summary including intelligence data."""
     context_parts = []
     
     # Company info
@@ -162,7 +206,45 @@ def _create_concise_context(company_name: str, website: str, document_bundle: Do
     if website:
         context_parts.append(f"Website: {website}")
     
-    # Financial summary (concise)
+    # Intelligence data (if available)
+    if intelligence_data and intelligence_data.json_data:
+        intel = intelligence_data.json_data
+        
+        # Business description
+        if intel.klassifikation.kurzbeschreibung:
+            context_parts.append(f"Business: {intel.klassifikation.kurzbeschreibung}")
+        
+        # Products/Services
+        if intel.produkte_dienstleistungen:
+            products = [p.name for p in intel.produkte_dienstleistungen[:3]]
+            context_parts.append(f"Products: {', '.join(products)}")
+        
+        # Markets
+        if intel.marktanalyse.endmaerkte:
+            markets = intel.marktanalyse.endmaerkte[:3]
+            context_parts.append(f"Markets: {', '.join(markets)}")
+        
+        # USPs
+        if intel.usps:
+            usps = intel.usps[:3]
+            context_parts.append(f"USPs: {'; '.join(usps)}")
+        
+        # Financial data from intelligence
+        if intel.finanzen.historie:
+            latest_finance = max(intel.finanzen.historie, key=lambda x: x.jahr)
+            if latest_finance.umsatz:
+                context_parts.append(f"Revenue {latest_finance.jahr}: {latest_finance.umsatz:,.0f} {latest_finance.waehrung}")
+        
+        # Organization
+        if intel.organisation.gesamt_headcount:
+            context_parts.append(f"Employees: {intel.organisation.gesamt_headcount}")
+        
+        # Certifications
+        if intel.zertifizierungen_compliance:
+            certs = [cert.standard for cert in intel.zertifizierungen_compliance[:3]]
+            context_parts.append(f"Certifications: {', '.join(certs)}")
+    
+    # Financial summary (from uploaded data)
     if financials and financials.series:
         latest_data = []
         for series in financials.series[:3]:  # Only first 3 series
@@ -170,7 +252,7 @@ def _create_concise_context(company_name: str, website: str, document_bundle: Do
                 latest_year, latest_value = series.data[-1]
                 latest_data.append(f"{series.name}: {latest_value:,.0f} ({latest_year})")
         if latest_data:
-            context_parts.append(f"Key Financials: {'; '.join(latest_data)}")
+            context_parts.append(f"Uploaded Financials: {'; '.join(latest_data)}")
     
     # Document summary (concise)
     if document_bundle and document_bundle.chunks:
@@ -183,9 +265,14 @@ def _create_concise_context(company_name: str, website: str, document_bundle: Do
                 else:
                     key_insights.append(text[:80] + "...")
         if key_insights:
-            context_parts.append(f"Key Insights: {' '.join(key_insights)}")
+            context_parts.append(f"Document Insights: {' '.join(key_insights)}")
     
     return " | ".join(context_parts)
+
+
+def _create_concise_context(company_name: str, website: str, document_bundle: DocumentBundle, financials: FinancialsData) -> str:
+    """Create a concise context summary to reduce token usage (fallback)."""
+    return _create_enhanced_context(company_name, website, document_bundle, financials, None)
 
 
 

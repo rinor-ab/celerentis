@@ -1,187 +1,312 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { Plus, FileText, Download, Clock, CheckCircle, AlertCircle } from 'lucide-react'
-
-interface Job {
-  id: string
-  company_name: string
-  status: string
-  created_at: string
-  download_url?: string
-}
-
-const statusConfig = {
-  queued: { label: 'Queued', icon: Clock, color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
-  running: { label: 'Running', icon: Clock, color: 'text-blue-600', bgColor: 'bg-blue-100' },
-  done: { label: 'Complete', icon: CheckCircle, color: 'text-green-600', bgColor: 'bg-green-100' },
-  error: { label: 'Error', icon: AlertCircle, color: 'text-red-600', bgColor: 'bg-red-100' }
-}
+import { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { 
+  Search, 
+  Filter, 
+  Plus, 
+  FileText, 
+  TrendingUp, 
+  Clock, 
+  CheckCircle,
+  DollarSign,
+  FolderOpen,
+  BarChart3
+} from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { KPICard } from '@/components/ui/kpi-card';
+import { ProjectCard } from '@/components/ui/project-card';
+import { SpendChart } from '@/components/ui/spend-chart';
+import { useProjects, useBillingUsage } from '@/lib/hooks/use-api';
+import { ProjectStatus, Project } from '@/lib/types';
+import { debounce } from '@/lib/utils';
+import Link from 'next/link';
 
 export default function Dashboard() {
-  const [jobs, setJobs] = useState<Job[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
+  const [activeTab, setActiveTab] = useState('overview');
 
-  const fetchJobs = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/jobs')
-      if (!response.ok) {
-        throw new Error('Failed to fetch jobs')
-      }
-      const jobsData = await response.json()
-      setJobs(jobsData)
-      setError('')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch jobs')
-      console.error('Error fetching jobs:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Debounced search
+  const debouncedSearch = useMemo(
+    () => debounce((query: string) => setSearchQuery(query), 300),
+    []
+  );
 
-  useEffect(() => {
-    fetchJobs()
-  }, [])
+  // Fetch data
+  const { data: projectsData, isLoading: projectsLoading } = useProjects({
+    search: searchQuery || undefined,
+    status: statusFilter === 'all' ? undefined : statusFilter,
+  });
 
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString)
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      })
-    } catch {
-      return 'Unknown date'
-    }
-  }
+  const { data: billingData } = useBillingUsage();
+
+  const projects: Project[] = projectsData?.items || [];
+  const totalProjects = projectsData?.total || 0;
+
+  // Calculate KPIs
+  const kpis = useMemo(() => {
+    const completed = projects.filter((p: Project) => p.status === 'complete').length;
+    const processing = projects.filter((p: Project) => p.status === 'processing').length;
+    const totalSpend = projects.reduce((sum: number, p: Project) => sum + (p.costCents || 0), 0);
+    const avgCost = projects.length > 0 ? totalSpend / projects.length : 0;
+
+    return {
+      totalProjects,
+      completed,
+      processing,
+      totalSpend,
+      avgCost,
+    };
+  }, [projects, totalProjects]);
+
+  // Recent projects (last 5)
+  const recentProjects = projects.slice(0, 5);
+
+  // Billing usage for chart (last 7 days)
+  const recentUsage = billingData?.slice(0, 7) || [];
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    debouncedSearch(e.target.value);
+  };
+
+  const statusOptions: { value: ProjectStatus | 'all'; label: string }[] = [
+    { value: 'all', label: 'All Projects' },
+    { value: 'complete', label: 'Complete' },
+    { value: 'processing', label: 'Processing' },
+    { value: 'error', label: 'Error' },
+    { value: 'queued', label: 'Queued' },
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="space-y-6">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <FileText className="h-8 w-8 text-primary-600" />
-              <h1 className="ml-3 text-2xl font-bold text-gray-900">Celerentis</h1>
-              <span className="ml-2 text-sm text-gray-500">AI IM Generator</span>
-            </div>
-            <Link
-              href="/new"
-              className="btn-primary flex items-center"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New IM
-            </Link>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Welcome back! Here's what's happening with your projects.
+          </p>
+        </div>
+        <Button asChild>
+          <Link href="/projects/new">
+            <Plus className="mr-2 h-4 w-4" />
+            New IM
+          </Link>
+        </Button>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <KPICard
+          title="Total Projects"
+          value={kpis.totalProjects}
+          icon={FolderOpen}
+          change={{ value: 12, type: 'increase' }}
+        />
+        <KPICard
+          title="Completed"
+          value={kpis.completed}
+          icon={CheckCircle}
+          change={{ value: 8, type: 'increase' }}
+        />
+        <KPICard
+          title="Processing"
+          value={kpis.processing}
+          icon={Clock}
+          change={{ value: 2, type: 'decrease' }}
+        />
+        <KPICard
+          title="Total Spend"
+          value={`$${(kpis.totalSpend / 100).toFixed(2)}`}
+          icon={DollarSign}
+          change={{ value: 15, type: 'increase' }}
+        />
+      </div>
+
+      {/* Main Content Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="projects">All Projects</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Recent Projects */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <FileText className="h-5 w-5" />
+                  <span>Recent Projects</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {projectsLoading ? (
+                  <div className="space-y-3">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
+                    ))}
+                  </div>
+                ) : recentProjects.length === 0 ? (
+                  <div className="text-center py-8">
+                    <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No projects yet</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Get started by creating your first Information Memorandum.
+                    </p>
+                    <Button asChild>
+                      <Link href="/projects/new">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create New IM
+                      </Link>
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {recentProjects.map((project: Project) => (
+                      <motion.div
+                        key={project.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/50 transition-colors">
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium truncate">{project.name}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {project.domain || 'No domain'}
+                            </p>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Badge variant="outline">
+                              {project.status}
+                            </Badge>
+                            {project.costCents && (
+                              <span className="text-sm text-muted-foreground">
+                                ${(project.costCents / 100).toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Spend Chart */}
+            {recentUsage.length > 0 ? (
+              <SpendChart data={recentUsage} />
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <BarChart3 className="h-5 w-5" />
+                    <span>Usage Overview</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64 flex items-center justify-center text-muted-foreground">
+                    <div className="text-center">
+                      <TrendingUp className="mx-auto h-12 w-12 mb-4" />
+                      <p>Usage data will appear here</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
-        </div>
-      </header>
+        </TabsContent>
 
-      {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Recent Jobs</h2>
-          <p className="text-gray-600">Track your Information Memorandum generation jobs</p>
-        </div>
-
-        {/* Jobs table */}
-        <div className="card">
-          {loading ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500">Loading jobs...</p>
-            </div>
-          ) : error ? (
-            <div className="text-center py-12 text-red-600">
-              <p>{error}</p>
-            </div>
-          ) : jobs.length === 0 ? (
-            <div className="text-center py-12">
-              <FileText className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No jobs yet</h3>
-              <p className="mt-1 text-sm text-gray-500">Get started by creating your first IM.</p>
-              <div className="mt-6">
-                <Link href="/new" className="btn-primary">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create New IM
-                </Link>
+        <TabsContent value="projects" className="space-y-6">
+          {/* Filters */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search projects..."
+                      onChange={handleSearchChange}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {statusOptions.map((option) => (
+                    <Button
+                      key={option.value}
+                      variant={statusFilter === option.value ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setStatusFilter(option.value)}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Projects Grid */}
+          {projectsLoading ? (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-64 bg-muted animate-pulse rounded-lg" />
+              ))}
             </div>
+          ) : projects.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center py-12">
+                  <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No projects found</h3>
+                  <p className="text-muted-foreground mb-4">
+                    {searchQuery || statusFilter !== 'all'
+                      ? 'Try adjusting your search or filters.'
+                      : 'Get started by creating your first Information Memorandum.'}
+                  </p>
+                  <Button asChild>
+                    <Link href="/projects/new">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create New IM
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Company
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Created
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {jobs.map((job) => {
-                    const status = statusConfig[job.status as keyof typeof statusConfig]
-                    const StatusIcon = status.icon
-                    
-                    return (
-                      <tr key={job.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {job.company_name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            ID: {job.id}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${status.bgColor} ${status.color}`}>
-                            <StatusIcon className="h-3 w-3 mr-1" />
-                            {status.label}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(job.created_at)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          {job.status === 'done' && job.download_url ? (
-                            <a
-                              href={job.download_url}
-                              className="text-primary-600 hover:text-primary-900 flex items-center"
-                            >
-                              <Download className="h-4 w-4 mr-1" />
-                              Download
-                            </a>
-                          ) : (
-                            <Link
-                              href={`/jobs/${job.id}`}
-                              className="text-primary-600 hover:text-primary-900"
-                            >
-                              View Details
-                            </Link>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {projects.map((project: Project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
             </div>
           )}
-        </div>
-      </main>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center py-12">
+                <BarChart3 className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">Analytics Coming Soon</h3>
+                <p className="text-muted-foreground">
+                  Detailed analytics and insights will be available here.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
-  )
+  );
 }
