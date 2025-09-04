@@ -52,12 +52,15 @@ export default function NewProjectPage() {
 
   // File handling
   const handleFilesAccepted = (newFiles: File[]) => {
+    console.log('Files accepted:', newFiles);
     const validFiles = newFiles.filter(file => file && file.name && file.size > 0);
+    console.log('Valid files:', validFiles);
     const filesWithIds = validFiles.map(file => ({
       ...file,
       id: `file-${Date.now()}-${Math.random()}`,
-      status: 'uploading' as const,
+      status: 'success' as const,
     }));
+    console.log('Files with IDs:', filesWithIds);
     setFiles(prev => [...prev, ...filesWithIds]);
   };
 
@@ -67,11 +70,15 @@ export default function NewProjectPage() {
 
   // Validation
   const isStep1Valid = projectName.trim().length > 0;
-  const isStep2Valid = files.some(file => file && file.name && file.name.endsWith('.pptx'));
+  const isStep2Valid = files.some(file => {
+    console.log('Checking file:', file, 'name:', file?.name, 'endsWith pptx:', file?.name?.endsWith('.pptx'));
+    return file && file.name && file.name.endsWith('.pptx');
+  });
+  console.log('Step 2 valid:', isStep2Valid, 'Files:', files);
   const canProceed = step === 1 ? isStep1Valid : isStep2Valid;
 
   // Cost estimation
-  const validFileCount = files.filter(file => file && file.name).length;
+  const validFileCount = files.filter(file => file && file.name && file.size > 0).length;
   const estimatedCost = validFileCount > 0 ? Math.max(15, validFileCount * 5) : 0;
   const estimatedTime = validFileCount > 0 ? Math.max(5, validFileCount * 2) : 0;
 

@@ -68,6 +68,9 @@ export function FileDropzone({
   });
 
   const getFileIcon = (file: File) => {
+    if (!file || !file.name) {
+      return <File className="h-4 w-4 text-muted-foreground" />;
+    }
     if (isPresentationFile(file.name)) {
       return <FileText className="h-4 w-4 text-blue-500" />;
     }
@@ -81,6 +84,7 @@ export function FileDropzone({
   };
 
   const getFileType = (file: File) => {
+    if (!file || !file.name) return 'other';
     if (isPresentationFile(file.name)) return 'template';
     if (isSpreadsheetFile(file.name)) return 'financials';
     if (file.name.endsWith('.zip')) return 'documents';
@@ -153,7 +157,7 @@ export function FileDropzone({
                           {getFileType(file)}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
-                          {formatFileSize(file.size)}
+                          {file.size ? formatFileSize(file.size) : 'Unknown size'}
                         </span>
                       </div>
                     </div>

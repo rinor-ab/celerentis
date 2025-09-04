@@ -13,7 +13,7 @@ export function formatCurrency(cents: number): string {
 }
 
 export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 Bytes';
+  if (!bytes || bytes === 0 || isNaN(bytes)) return '0 Bytes';
   
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
@@ -137,28 +137,33 @@ export function validateUrl(url: string): boolean {
 }
 
 export function getFileExtension(filename: string): string {
+  if (!filename || typeof filename !== 'string') return '';
   return filename.slice((filename.lastIndexOf('.') - 1 >>> 0) + 2);
 }
 
 export function isImageFile(filename: string): boolean {
+  if (!filename || typeof filename !== 'string') return false;
   const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
   const extension = getFileExtension(filename).toLowerCase();
   return imageExtensions.includes(extension);
 }
 
 export function isDocumentFile(filename: string): boolean {
+  if (!filename || typeof filename !== 'string') return false;
   const documentExtensions = ['pdf', 'doc', 'docx', 'txt', 'rtf'];
   const extension = getFileExtension(filename).toLowerCase();
   return documentExtensions.includes(extension);
 }
 
 export function isSpreadsheetFile(filename: string): boolean {
+  if (!filename || typeof filename !== 'string') return false;
   const spreadsheetExtensions = ['xls', 'xlsx', 'csv'];
   const extension = getFileExtension(filename).toLowerCase();
   return spreadsheetExtensions.includes(extension);
 }
 
 export function isPresentationFile(filename: string): boolean {
+  if (!filename || typeof filename !== 'string') return false;
   const presentationExtensions = ['ppt', 'pptx'];
   const extension = getFileExtension(filename).toLowerCase();
   return presentationExtensions.includes(extension);
