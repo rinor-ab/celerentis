@@ -80,8 +80,12 @@ export default function NewProjectPage() {
   // Validation
   const isStep1Valid = projectName.trim().length > 0;
   const isStep2Valid = files.length > 0 && files.some(file => {
-    const hasPptx = file && file.name && (file.name.toLowerCase().endsWith('.pptx') || file.name.toLowerCase().endsWith('.ppt'));
-    console.log('Checking file:', file?.name, 'has PPTX:', hasPptx);
+    if (!file || typeof file.name !== 'string') {
+      console.log('Invalid file object:', file);
+      return false;
+    }
+    const hasPptx = file.name.toLowerCase().endsWith('.pptx') || file.name.toLowerCase().endsWith('.ppt');
+    console.log('Checking file:', file.name, 'has PPTX:', hasPptx);
     return hasPptx;
   });
   console.log('Step 2 valid:', isStep2Valid, 'Files count:', files.length);

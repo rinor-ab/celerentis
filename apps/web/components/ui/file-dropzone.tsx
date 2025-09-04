@@ -77,7 +77,7 @@ export function FileDropzone({
     if (isSpreadsheetFile(file.name)) {
       return <FileSpreadsheet className="h-4 w-4 text-green-500" />;
     }
-    if (file.name.endsWith('.zip')) {
+    if (file.name && file.name.endsWith('.zip')) {
       return <Archive className="h-4 w-4 text-orange-500" />;
     }
     return <File className="h-4 w-4 text-muted-foreground" />;
@@ -87,7 +87,7 @@ export function FileDropzone({
     if (!file || !file.name) return 'other';
     if (isPresentationFile(file.name)) return 'template';
     if (isSpreadsheetFile(file.name)) return 'financials';
-    if (file.name.endsWith('.zip')) return 'documents';
+    if (file.name && file.name.endsWith('.zip')) return 'documents';
     return 'other';
   };
 

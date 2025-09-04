@@ -315,8 +315,8 @@ export const handlers = [
       id: `file-${Date.now()}-${Math.random()}`,
       name: file.name,
       size: file.size,
-      kind: file.name.endsWith('.xlsx') ? 'financials' : 
-            file.name.endsWith('.zip') ? 'documents' : 'template',
+      kind: (file.name && file.name.endsWith('.xlsx')) ? 'financials' : 
+            (file.name && file.name.endsWith('.zip')) ? 'documents' : 'template',
     }));
 
     const project = db.project.findFirst({
