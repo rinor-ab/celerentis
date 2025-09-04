@@ -53,13 +53,22 @@ export default function NewProjectPage() {
   // File handling
   const handleFilesAccepted = (newFiles: File[]) => {
     console.log('Files accepted:', newFiles);
-    const validFiles = newFiles.filter(file => file && file.name && file.size > 0);
-    console.log('Valid files:', validFiles);
-    const filesWithIds = validFiles.map(file => ({
-      ...file,
-      id: `file-${Date.now()}-${Math.random()}`,
-      status: 'success' as const,
-    }));
+    const filesWithIds = newFiles.map(file => {
+      console.log('Processing file:', {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified
+      });
+      return {
+        ...file,
+        id: `file-${Date.now()}-${Math.random()}`,
+        status: 'success' as const,
+        name: file.name,
+        size: file.size,
+        type: file.type
+      };
+    });
     console.log('Files with IDs:', filesWithIds);
     setFiles(prev => [...prev, ...filesWithIds]);
   };
@@ -70,11 +79,12 @@ export default function NewProjectPage() {
 
   // Validation
   const isStep1Valid = projectName.trim().length > 0;
-  const isStep2Valid = files.some(file => {
-    console.log('Checking file:', file, 'name:', file?.name, 'endsWith pptx:', file?.name?.endsWith('.pptx'));
-    return file && file.name && file.name.endsWith('.pptx');
+  const isStep2Valid = files.length > 0 && files.some(file => {
+    const hasPptx = file && file.name && (file.name.toLowerCase().endsWith('.pptx') || file.name.toLowerCase().endsWith('.ppt'));
+    console.log('Checking file:', file?.name, 'has PPTX:', hasPptx);
+    return hasPptx;
   });
-  console.log('Step 2 valid:', isStep2Valid, 'Files:', files);
+  console.log('Step 2 valid:', isStep2Valid, 'Files count:', files.length);
   const canProceed = step === 1 ? isStep1Valid : isStep2Valid;
 
   // Cost estimation
