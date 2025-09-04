@@ -11,8 +11,8 @@ from pptx.util import Inches
 from PIL import Image
 
 # Use absolute imports
-from packages.core.models.slide import SlideDraft, ChartToken
-from packages.core.models.financials import FinancialsData
+from models.slide import SlideDraft, ChartToken
+from models.financials import FinancialsData
 
 
 def build_deck(

@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 import traceback
 
 # Use absolute imports
-from packages.core.models.document import DocChunk, DocumentBundle
+from models.document import DocChunk, DocumentBundle
 
 
 def parse_bundle(zip_bytes: bytes) -> DocumentBundle:

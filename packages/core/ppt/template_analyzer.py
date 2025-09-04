@@ -9,7 +9,7 @@ from pptx.shapes.placeholder import SlidePlaceholder
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 
 # Use absolute imports
-from packages.core.models.slide import SlideDef, ChartToken, TemplateAnalysis
+from models.slide import SlideDef, ChartToken, TemplateAnalysis
 
 
 def analyze_template(pptx_bytes: bytes) -> TemplateAnalysis:
