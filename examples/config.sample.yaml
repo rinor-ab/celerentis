@@ -1,0 +1,31 @@
+
+---
+
+## `examples/config.sample.yaml`
+
+```yaml
+company_name: "Acme Corp"
+tagline: "Accelerating value creation"
+about_bullets:
+  - Global provider of contraption solutions
+  - FY2024 revenue: $125m (+18% YoY)
+  - Profitable since 2020; strong cash generation
+logo_path: "examples/logo.png"
+
+# A single series for now (year, value)
+financials:
+  - [2019, 62]
+  - [2020, 71]
+  - [2021, 83]
+  - [2022, 106]
+  - [2023, 125]
+
+template_path: "examples/template.pptx"
+output_path: "examples/OutDeck.pptx"
+
+chart:
+  title: "Revenue ($m)"
+  xlabel: "Year"
+  ylabel: "Revenue"
+  placeholder_token: "{{CHART_PLACEHOLDER}}"
+
