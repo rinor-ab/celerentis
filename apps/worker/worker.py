@@ -3,10 +3,12 @@
 import os
 import traceback
 from celery import Celery
-
-# Import models directly from the core package
 import sys
-sys.path.append('/app/packages/core')
+from pathlib import Path
+
+# Add the packages/core directory to Python path
+core_path = Path(__file__).parent.parent.parent / "packages" / "core"
+sys.path.insert(0, str(core_path))
 from utils.s3_client import S3Client
 from utils.logo_fetcher import fetch_company_logo
 from ingest.financials import parse_financials
@@ -105,6 +107,7 @@ def create_im_generation_task(
         if not template_analysis.slide_defs:
             print("WARNING: No slides found in template!")
             # Create a basic slide definition to prevent failure
+            from models.slide import SlideDef
             template_analysis.slide_defs = [
                 SlideDef(
                     slide_index=0,
@@ -273,6 +276,6 @@ def create_im_generation_task(
 
 
 # Import models to avoid circular imports
-from packages.core.models.document import DocumentBundle
-from packages.core.models.financials import FinancialsData
-from packages.core.models.slide import SlideDraft
+from models.document import DocumentBundle
+from models.financials import FinancialsData
+from models.slide import SlideDraft, SlideDef

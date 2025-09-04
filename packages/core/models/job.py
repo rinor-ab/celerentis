@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union
 from uuid import UUID
 from pydantic import BaseModel, Field
 
@@ -54,7 +54,7 @@ class JobUpdate(BaseModel):
 
 class JobResponse(BaseModel):
     """Job response for API."""
-    id: UUID
+    id: Union[str, UUID]
     company_name: str
     website: Optional[str] = None
     status: JobStatus

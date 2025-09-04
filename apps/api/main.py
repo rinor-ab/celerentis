@@ -3,15 +3,18 @@
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from typing import Optional
+from typing import Optional, List
 import uuid
 from datetime import datetime
 import os
-
-# Import models directly from the core package
 import sys
-sys.path.append('/app/packages/core')
-from models import JobCreate, JobResponse, JobStatus
+from pathlib import Path
+
+# Add the packages/core directory to Python path
+core_path = Path(__file__).parent.parent.parent / "packages" / "core"
+sys.path.insert(0, str(core_path))
+
+from models.job import JobCreate, JobResponse, JobStatus
 from utils.s3_client import S3Client
 from utils.logo_fetcher import fetch_company_logo
 from ingest.financials import parse_financials
@@ -20,8 +23,12 @@ from ppt.template_analyzer import analyze_template
 from llm.writer import write_section_texts
 from ppt.builder import build_deck
 
-# Import worker task
-from worker import create_im_generation_task
+# Import worker task conditionally to avoid import errors
+try:
+    from worker import create_im_generation_task
+except ImportError:
+    print("Warning: Worker module not available. Job creation will fail.")
+    create_im_generation_task = None
 
 app = FastAPI(
     title="Celerentis API",
@@ -48,7 +55,7 @@ async def root():
     return {"message": "Celerentis API is running", "version": "1.0.0"}
 
 
-@app.get("/jobs", response_model=list[JobResponse])
+@app.get("/jobs", response_model=List[JobResponse])
 async def list_jobs():
     """List all jobs."""
     try:
@@ -187,15 +194,18 @@ async def create_job(
         )
         
         # Enqueue worker task
-        task = create_im_generation_task.delay(
-            job_id=job_id,
-            company_name=company_name,
-            website=website,
-            pull_public_data=pull_public_data,
-            template_key=template_key,
-            financials_key=financials_key,
-            bundle_key=bundle_key
-        )
+        if create_im_generation_task:
+            task = create_im_generation_task.delay(
+                job_id=job_id,
+                company_name=company_name,
+                website=website,
+                pull_public_data=pull_public_data,
+                template_key=template_key,
+                financials_key=financials_key,
+                bundle_key=bundle_key
+            )
+        else:
+            raise HTTPException(status_code=500, detail="Worker service not available")
         
         return JobResponse(
             id=job_id,

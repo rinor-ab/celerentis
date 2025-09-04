@@ -2,7 +2,7 @@
 
 import os
 import boto3
-from typing import Optional, BinaryIO
+from typing import Optional, BinaryIO, List
 from botocore.exceptions import ClientError, NoCredentialsError
 from botocore.config import Config
 
@@ -182,7 +182,7 @@ class S3Client:
             print(f"Error checking if file exists: {e}")
             return False
     
-    def list_job_directories(self) -> list[str]:
+    def list_job_directories(self) -> List[str]:
         """
         List all job directories from S3.
         
@@ -282,7 +282,7 @@ class S3Client:
             print(f"Failed to generate presigned upload URL: {e}")
             return None
     
-    def list_files(self, prefix: str = "", max_keys: int = 1000) -> list:
+    def list_files(self, prefix: str = "", max_keys: int = 1000) -> List[str]:
         """
         List files in S3 with a given prefix.
         

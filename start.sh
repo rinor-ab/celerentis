@@ -19,6 +19,13 @@ if [ ! -f "infra/.env" ]; then
     exit 1
 fi
 
+# Also check for local .env file
+if [ ! -f ".env.local" ]; then
+    echo "⚠️  No .env.local file found. Creating from template..."
+    cp infra/env.example .env.local
+    echo "📝 Please edit .env.local and set your OpenAI API key for local development."
+fi
+
 # Check if OpenAI API key is set
 if grep -q "your_openai_api_key_here" infra/.env; then
     echo "❌ Please set your OpenAI API key in infra/.env before continuing."
