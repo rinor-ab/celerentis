@@ -52,7 +52,8 @@ export default function NewProjectPage() {
 
   // File handling
   const handleFilesAccepted = (newFiles: File[]) => {
-    const filesWithIds = newFiles.map(file => ({
+    const validFiles = newFiles.filter(file => file && file.name && file.size > 0);
+    const filesWithIds = validFiles.map(file => ({
       ...file,
       id: `file-${Date.now()}-${Math.random()}`,
       status: 'uploading' as const,
@@ -66,12 +67,13 @@ export default function NewProjectPage() {
 
   // Validation
   const isStep1Valid = projectName.trim().length > 0;
-  const isStep2Valid = files.some(file => file.name.endsWith('.pptx'));
+  const isStep2Valid = files.some(file => file && file.name && file.name.endsWith('.pptx'));
   const canProceed = step === 1 ? isStep1Valid : isStep2Valid;
 
   // Cost estimation
-  const estimatedCost = files.length > 0 ? Math.max(15, files.length * 5) : 0;
-  const estimatedTime = files.length > 0 ? Math.max(5, files.length * 2) : 0;
+  const validFileCount = files.filter(file => file && file.name).length;
+  const estimatedCost = validFileCount > 0 ? Math.max(15, validFileCount * 5) : 0;
+  const estimatedTime = validFileCount > 0 ? Math.max(5, validFileCount * 2) : 0;
 
   const handleNext = async () => {
     if (step === 1) {
@@ -102,10 +104,11 @@ export default function NewProjectPage() {
         setIsSubmitting(true);
         
         // Upload files
-        if (files.length > 0) {
+        const validFiles = files.filter(file => file && file.name && file.size > 0);
+        if (validFiles.length > 0) {
           await uploadFiles.mutateAsync({
             projectId,
-            files: files.map(f => f as File),
+            files: validFiles.map(f => f as File),
           });
         }
         
